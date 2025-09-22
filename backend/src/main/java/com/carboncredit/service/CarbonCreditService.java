@@ -5,9 +5,11 @@ import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.repository.CarbonCreditRepository;
-import com.carboncredit.repository.JourneyDataRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +20,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class CarbonCreditService {
 
     private final CarbonCreditRepository carbonCreditRepository;
-    private final JourneyDataRepository journeyDataRepository;
 
     public BigDecimal calculateCO2Reduction(BigDecimal distanceKm, BigDecimal energyConsumeKwh) {
         // avergage gasoline car emission
@@ -95,25 +97,71 @@ public class CarbonCreditService {
         return carbonCreditRepository.findById(id);
     }
 
-    public CarbonCredit listCarbonCredit(UUID creditId) {
-        CarbonCredit credit = carbonCreditRepository.findById(creditId)
-                .orElseThrow(() -> new RuntimeException("Carbon credit not found"));
-        
-        if (credit.getStatus() != CreditStatus.VERIFIED) {
-            throw new RuntimeException("Only verified credits can be listed");
+    public CarbonCredit listCarbonCredit(UUID creditId, User listedBy) {
+        // Input validation
+        if (creditId == null) {
+            throw new IllegalArgumentException("Credit ID cannot be null");
+
+        }
+        if (listedBy == null) {
+            throw new IllegalArgumentException("User listing the credit cannot be null");
         }
 
-        credit.setStatus(CreditStatus.LISTED);
-        credit.setListedAt(LocalDateTime.now());
-        // Credit amount remains the same when listing (already calculated as VERIFIED)
+        log.info("Attempting to list carbon credit {} by user {}", creditId, listedBy.getId());
 
-        return carbonCreditRepository.save(credit);
+        // load credit with better exception handling
+        CarbonCredit credit = carbonCreditRepository.findById(creditId)
+                .orElseThrow(() -> new EntityNotFoundException("Carbon credit not found with ID: " + creditId));
+
+        // Ownership validation (assuming credits can only be listed by theri owners)
+        if (!credit.getUser().getId().equals(listedBy.getId())) {
+            log.warn("User {} attetmted to list credit {} owned by {}", listedBy.getId(), creditId,
+                    credit.getUser().getId());
+            throw new SecurityException("User can only list their own credits");
+        }
+
+        // Status validation with more specific erro messages
+        if (credit.getStatus() == CreditStatus.LISTED) {
+            log.info("Credit {} is already listed, returning existing listing", creditId);
+            return credit; // Idempotent behavior - already listed
+        }
+
+        if (credit.getStatus() != CreditStatus.VERIFIED) {
+            log.warn("Attempted to list credit {} with invalid status: {}", creditId, credit.getStatus());
+            throw new IllegalStateException(
+                    String.format("Only verified credits can be listed. Current status: %s", credit.getStatus()));
+        }
+
+        // business rule validation
+        if (credit.getCreditAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Cannot list credit with zero or negative amount");
+        }
+
+        // check if credit is expired if needed, not yet
+
+        // Update credit status and metadata
+        LocalDateTime now = LocalDateTime.now();
+        credit.setStatus(CreditStatus.LISTED);
+        credit.setListedAt(now);
+        try {
+            CarbonCredit savedCredit = carbonCreditRepository.save(credit);
+            log.info("Successfully listed carbon credit {} at {}", creditId, now);
+
+            // Optional: Publish domain event for downstream processing
+            // publishCreditListedEvent(savedCredit, listedBy);
+
+            return savedCredit;
+        } catch (Exception e) {
+            log.error("Failed to save listed credit {}: {}", creditId, e.getMessage());
+            throw new RuntimeException("Failed to list credit: " + e.getMessage(), e);
+        }
+
     }
 
     public CarbonCredit markAsSold(UUID creditId) {
         CarbonCredit credit = carbonCreditRepository.findById(creditId)
                 .orElseThrow(() -> new RuntimeException("Carbon credit not found"));
-        
+
         if (credit.getStatus() != CreditStatus.LISTED) {
             throw new RuntimeException("Only listed credits can be sold");
         }
