@@ -18,6 +18,13 @@ VALUES
   ('33333333-3333-3333-3333-333333333333', 'cva1',     'cva1@example.com',     'cva1', 'CVA',      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('44444444-4444-4444-4444-444444444444', 'admin1',   'admin1@example.com',   'admin1', 'ADMIN',    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
+  -- Insert test users with proper password hashes
+INSERT INTO users (user_id, username, email, password_hash, role, created_at, updated_at) 
+VALUES 
+    (gen_random_uuid(), 'ev_owner_test', 'evowner@test.com', '$2a$10$test.hash.here', 'EV_OWNER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (gen_random_uuid(), 'buyer_test', 'buyer@test.com', '$2a$10$test.hash.here', 'BUYER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (gen_random_uuid(), 'cva_test', 'cva@test.com', '$2a$10$test.hash.here', 'CVA', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
   SELECT * FROM users;
 
 -- EV Vehicles table
@@ -67,6 +74,23 @@ CREATE TABLE credit_listings (
     status VARCHAR(20) NOT NULL CHECK (status IN ('ACTIVE', 'CLOSED', 'CANCELLED')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- add updated_at collum to the credit_listings table
+ALTER TABLE credit_listings ADD COLUMN update_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- A trigger to automatically update the timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.update_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_credit_listings_updated_at
+    BEFORE UPDATE ON credit_listings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Transactions table
 CREATE TABLE transactions (
