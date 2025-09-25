@@ -10,11 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
 
-import com.carboncredit.dto.TransactionStatisticsDTO;
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.CreditListing;
@@ -25,8 +27,10 @@ import com.carboncredit.entity.Transaction;
 import com.carboncredit.entity.Transaction.TransactionStatus;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
+import com.carboncredit.exception.EntityNotFoundException;
 import com.carboncredit.exception.PaymentException;
 import com.carboncredit.exception.SecurityException;
+import com.carboncredit.exception.UnauthorizedOperationException;
 import com.carboncredit.exception.ValidationException;
 import com.carboncredit.repository.CarbonCreditRepository;
 import com.carboncredit.repository.CreditListingRepository;
@@ -34,11 +38,12 @@ import com.carboncredit.repository.DisputeRepository;
 import com.carboncredit.repository.TransactionRepository;
 import com.carboncredit.service.PaymentService.PaymentResult;
 
-import jakarta.persistence.EntityNotFoundException;
-
+@Service
 public class TransactionService {
 
     private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
+
+    @Autowired
     private ValidationService validationService;
 
     @Autowired
@@ -65,27 +70,28 @@ public class TransactionService {
     
     // ==== TRANSACTION AND PROCESSING ================
 
-    // inititates transcation for purchasing a carbon credit
+    // Initiates transaction for purchasing a carbon credit
     @Transactional
     public Transaction initiatePurchase(UUID listingId, User buyer) {
         log.info("Initiating purchase for listing {} by user {}", listingId, buyer.getUsername());
 
-        //Validate parameter
+        // Validate parameters
         validationService.validateId(listingId, "CreditListing");
         validationService.validateUser(buyer);
 
-        //Find and validate listing
-        CreditListing listing = creditListingRepository.findById(listingId).orElseThrow(() -> new EntityNotFoundException("Listing not found"));
+        // Find and validate listing
+        CreditListing listing = creditListingRepository.findById(listingId)
+            .orElseThrow(() -> new EntityNotFoundException("Listing not found"));
         
 
-        //validdate purchase request
+        // Validate purchase request
         validationService.validatePurchaseRequest(listing, buyer);
 
-        //get associated with carbon credit
+        // Get associated carbon credit
         CarbonCredit credit = listing.getCredit();
         User seller = credit.getUser();
 
-        //Create transaction
+        // Create transaction
         Transaction transaction = new Transaction();
         transaction.setCredit(credit);
         transaction.setListing(listing);
@@ -95,19 +101,18 @@ public class TransactionService {
         transaction.setStatus(TransactionStatus.PENDING);
         transaction.setCreatedAt(LocalDateTime.now());
 
-
         Transaction savedTransaction = transactionRepository.save(transaction);
 
-        //update lisitng status to prevent concureent purchases
+        // Update listing status to prevent concurrent purchases
         listing.setStatus(ListingStatus.PENDING_TRANSACTION);
         creditListingRepository.save(listing);
 
-        //process payment
+        // Process payment
         try {
             processPayment(savedTransaction);
         } catch (Exception e) {
             log.error("Payment failed for transaction {}: {}", savedTransaction.getId(), e.getMessage());
-            //rollback listing status
+            // Rollback listing status
             listing.setStatus(ListingStatus.ACTIVE);
             creditListingRepository.save(listing);
 
@@ -115,29 +120,30 @@ public class TransactionService {
             transactionRepository.save(savedTransaction);
 
             throw new PaymentException("Payment processing failed: " + e.getMessage(), e);
-
         }
 
-
-        //Log audit trail
-        auditService.logTransactionalInitiated(savedTransaction.getId().toString(), buyer.getId().toString(), seller.getId().toString(), savedTransaction.getAmount().toString());
+        // Log audit trail
+        auditService.logTransactionInitiated(savedTransaction.getId().toString(), 
+            buyer.getId().toString(), seller.getId().toString(), savedTransaction.getAmount().toString());
 
         log.info("Transaction {} initiated successfully", savedTransaction.getId());
         return savedTransaction;
     }
 
-    //Process payment for a transaction
+    // Process payment for a transaction
     @Transactional
     public void processPayment(Transaction transaction) {
-        log.info("Processing payment for transcation {}", transaction.getId());
+        log.info("Processing payment for transaction {}", transaction.getId());
 
-        //validate transcation
+        // Validate transaction
         validationService.validateTransactionSecurity(transaction);
 
-        //Process paymet through payment service
-        PaymentResult paymentResult = paymentService.processPayment(transaction.getId(), transaction.getAmount(), transaction.getBuyer().getId().toString(), transaction.getSeller().getId().toString());
+        // Process payment through payment service
+        PaymentResult paymentResult = paymentService.processPayment(transaction.getId(), 
+            transaction.getAmount(), transaction.getBuyer().getId().toString(), 
+            transaction.getSeller().getId().toString());
 
-        if(paymentResult.isSuccess()) {
+        if (paymentResult.isSuccess()) {
             completeTransaction(transaction);
         } else {
             failTransaction(transaction, "Payment failed: " + paymentResult.getErrorMessage());
@@ -145,48 +151,52 @@ public class TransactionService {
         }
     }
 
-    //Compelete a successful transaction
+    // Complete a successful transaction
     @Transactional
-    public Transaction completeTransaction (Transaction transaction) {
-        log.info("Compelete transaction {}", transaction.getId());
+    public Transaction completeTransaction(Transaction transaction) {
+        log.info("Completing transaction {}", transaction.getId());
 
-        //validate current transaction state
-        CreditListing currentListing = creditListingRepository.findById(transaction.getListing().getId()).orElseThrow(() -> new EntityNotFoundException("Lisitng not found"));
-        CarbonCredit currentCredit = carbonCreditRepository.findById(transaction.getCredit().getId()).orElseThrow(() -> new EntityNotFoundException("Carbon credit not found"));
+        // Validate current transaction state
+        CreditListing currentListing = creditListingRepository.findById(transaction.getListing().getId())
+            .orElseThrow(() -> new EntityNotFoundException("Listing not found"));
+        CarbonCredit currentCredit = carbonCreditRepository.findById(transaction.getCredit().getId())
+            .orElseThrow(() -> new EntityNotFoundException("Carbon credit not found"));
 
-        //validate transaction preconditions
+        // Validate transaction preconditions
         validationService.validateTransactionPreconditions(transaction, currentListing, currentCredit);
 
-        //Update transaction Status
+        // Update transaction status
         transaction.setStatus(TransactionStatus.COMPLETED);
         transaction.setCompletedAt(LocalDateTime.now());
 
-        //Update lisitng status
+        // Update listing status
         currentListing.setStatus(ListingStatus.CLOSED);
         creditListingRepository.save(currentListing);
 
-        //Save completed transaction
+        // Save completed transaction
         Transaction completedTransaction = transactionRepository.save(transaction);
 
-        //Log audit trail
-        auditService.logTransactionCompleted (
-            completedTransaction.getId().toString(), completedTransaction.getBuyer().getId().toString(), completedTransaction.getSeller().getId().toString()
+        // Log audit trail
+        auditService.logTransactionCompleted(
+            completedTransaction.getId().toString(), 
+            completedTransaction.getBuyer().getId().toString(), 
+            completedTransaction.getSeller().getId().toString()
         );
 
-        //Send notification
-        notificationService.notifyTransactionCompleted(completedTransaction.getBuyer(), completedTransaction.getBuyer().getId().toString(), completedTransaction.getId().toString());
+        // Send notification
+        notificationService.notifyTransactionCompleted(completedTransaction.getBuyer(), 
+            completedTransaction.getSeller(), completedTransaction.getId().toString());
 
         log.info("Transaction {} completed successfully", completedTransaction.getId());
         return completedTransaction;
     }
 
-
-    //Fail a transcation with reason
+    // Fail a transaction with reason
     @Transactional
     public Transaction failTransaction(Transaction transaction, String reason) {
-        log.info("Failing transcation {} with reason: {}", transaction.getId(), reason);
+        log.info("Failing transaction {} with reason: {}", transaction.getId(), reason);
 
-        //udpate transaction status
+        // Update transaction status
         transaction.setStatus(TransactionStatus.CANCELLED);
         Transaction failedTransaction = transactionRepository.save(transaction);
 
@@ -195,25 +205,34 @@ public class TransactionService {
         listing.setStatus(ListingStatus.ACTIVE);
         creditListingRepository.save(listing);
 
-        // Log autdt trail
+        // Log audit trail
         auditService.logTransactionFailed(transaction.getId().toString(), reason);
 
-        //Send notification
-        notificationService.notifyTransactionFailed(transaction.getBuyer(), transaction.getSeller(), transaction.getId().toString(), reason);
+        // Send notification
+        notificationService.notifyTransactionFailed(transaction.getBuyer(), 
+            transaction.getSeller(), transaction.getId().toString(), reason);
 
         log.info("Transaction {} failed: {}", failedTransaction.getId(), reason);
         return failedTransaction;
     }
 
-    //Cancels a pending transaction
+    // Cancel a pending transaction
     @Transactional
     public Transaction cancelTransaction(UUID transactionId, User requestingUser) {
         log.info("Cancelling transaction {} by user {}", transactionId, requestingUser.getUsername());
 
         Transaction transaction = findTransactionById(transactionId);
 
-        //validate cancellation rights
-        
+        // Validate cancellation rights
+        if (transaction.getStatus() != TransactionStatus.PENDING) {
+            throw new BusinessOperationException("Only pending transactions can be cancelled");
+        }
+
+        if (!canCancelTransaction(transaction, requestingUser)) {
+            throw new UnauthorizedOperationException("User not authorized to cancel this transaction");
+        }
+
+        return failTransaction(transaction, "Cancelled by " + requestingUser.getUsername());
     }
 
     // Check if user can cancel the transaction
@@ -223,22 +242,23 @@ public class TransactionService {
         hasAdminRole(user);
     }
 
-    //check if user has admin role
+    // Check if user has admin role
     private boolean hasAdminRole(User user) {
-        return "ADMIN".equals(user.getRole()) || "CVA".equals(user.getRole());
+        return User.UserRole.ADMIN.equals(user.getRole()) || User.UserRole.CVA.equals(user.getRole());
     }
 
     // =========== QUERY METHODS ===========
 
-    //Find transaction by ID
+    // Find transaction by ID
     public Transaction findTransactionById(UUID transactionId) {
         validationService.validateId(transactionId, "Transaction");
 
-        return transactionRepository.findById(transactionId).orElseThrow(() -> new EntityNotFoundException("Transaction not found with IDL " + transactionId));
+        return transactionRepository.findById(transactionId)
+            .orElseThrow(() -> new EntityNotFoundException("Transaction not found with ID: " + transactionId));
     }
 
-    //get all transaction for a user (as buyer or seller)
-    @Transactional(readOny = true)
+    // Get all transactions for a user (as buyer or seller)
+    @Transactional(readOnly = true)
     public Page<Transaction> getUserTransactions(User user, int page, int size) {
         validationService.validateUser(user);
         validationService.validatePageParameters(page, size);
@@ -247,7 +267,7 @@ public class TransactionService {
         return transactionRepository.findByBuyerOrSeller(user, user, pageable);
     }
 
-    //get purchases history for a buyer
+    // Get purchase history for a buyer
     @Transactional(readOnly = true)
     public Page<Transaction> getPurchaseHistory(User buyer, int page, int size) {
         validationService.validateUser(buyer);
@@ -257,7 +277,7 @@ public class TransactionService {
         return transactionRepository.findByBuyer(buyer, pageable);
     }
     
-    //get slaes history for a seller
+    // Get sales history for a seller
     @Transactional(readOnly = true)
     public Page<Transaction> getSalesHistory(User seller, int page, int size) {
         validationService.validateUser(seller);
@@ -267,19 +287,21 @@ public class TransactionService {
         return transactionRepository.findBySeller(seller, pageable);
     }
 
-    // Gets transaction by status
+    // Get transactions by status
     @Transactional(readOnly = true)
     public Page<Transaction> getTransactionsByStatus(TransactionStatus status, int page, int size) {
-        validationSerivce.validatePageParameters(page, size);
+        validationService.validatePageParameters(page, size);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return transactionRepository.findByStatus(status, pageable);
     }
 
-    // Gets disputed transactions
-    @Transactionla(readOnly = true)
-    public Page<Transcation> getTransactionsByStatus(TransactionStatus status, int page, int size) {
-        validationService.v
-    }
+    // Get disputed transactions
+    @Transactional(readOnly = true)
+    public Page<Transaction> getDisputedTransactions(int page, int size) {
+        validationService.validatePageParameters(page, size);
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return transactionRepository.findByStatus(TransactionStatus.DISPUTED, pageable);
+    }
 }

@@ -130,7 +130,7 @@ public class ValidationService {
     }
 
     // validate transaction limits and security
-    public void validateTranscationSecurity(Transaction transaction) {
+    public void validateTransactionSecurity(Transaction transaction) {
         User buyer = transaction.getBuyer();
         BigDecimal amount = transaction.getAmount();
 

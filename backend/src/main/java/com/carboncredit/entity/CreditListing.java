@@ -62,6 +62,6 @@ public class CreditListing {
     }
 
     public enum ListingStatus {
-        ACTIVE, CLOSED, CANCELLED
+        ACTIVE, CLOSED, CANCELLED, PENDING_TRANSACTION
     }
 }
