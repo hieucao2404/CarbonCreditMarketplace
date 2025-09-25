@@ -27,6 +27,10 @@ VALUES
 
   SELECT * FROM users;
 
+  --them cot phone vao
+  ALTER TABLE users ADD COLUMN phone VARCHAR(20) UNIQUE;
+  ALTER TABLE users ADD COLUMN fullname VARCHAR(100);
+
 -- EV Vehicles table
 CREATE TABLE vehicles (
     vehicle_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

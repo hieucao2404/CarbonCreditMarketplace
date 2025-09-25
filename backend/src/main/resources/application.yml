@@ -10,7 +10,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/carbon_credit_db
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:Hieu0935828519}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
   
   jpa:
