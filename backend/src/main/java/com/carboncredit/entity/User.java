@@ -45,6 +45,12 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(unique = true, length = 20)
+    private String phone;
+
+    @Column(nullable = false, length = 100)
+    private String fullName;
+
     // Relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Vehicle> vehicles;
