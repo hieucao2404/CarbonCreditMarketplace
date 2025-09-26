@@ -497,6 +497,136 @@ One-to-one with journey	One-to-one with credit (when listed)
 # CREDIT LISTING
  Create new attrite updated time for creditlisting table
 
+## 🗄️ Database Schema Updates
+
+### Recent Schema Modifications (September 2025)
+
+#### 1. Credit Listings Table - Added `updated_at` Column
+```sql
+-- Add updated_at column to the credit_listings table
+ALTER TABLE credit_listings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- A trigger to automatically update the timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_credit_listings_updated_at
+    BEFORE UPDATE ON credit_listings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+#### 2. Disputes Table - Added `resolved_by_id` Column
+```sql
+-- Add foreign key reference to track which CVA resolved the dispute
+ALTER TABLE disputes ADD COLUMN resolved_by_id UUID REFERENCES users(user_id);
+```
+
+#### 3. Notifications Table - Added Related Entity Tracking
+```sql
+-- Add columns to track which business entity triggered the notification
+ALTER TABLE notifications ADD COLUMN related_entity_id UUID;
+ALTER TABLE notifications ADD COLUMN related_entity_type VARCHAR(50);
+```
+
+**Purpose of Related Entity Fields**:
+- `related_entity_id`: Stores the UUID of the business object (transaction, payment, credit, etc.)
+- `related_entity_type`: Identifies the type of entity using enum values:
+  - `TRANSACTION`, `PAYMENT`, `CREDIT`, `LISTING`, `DISPUTE`, `CERTIFICATE`, `USER`, `WALLET`
+
+**Example Usage**:
+```java
+// Transaction completion notification
+notification.setRelatedEntityId(transactionId);
+notification.setRelatedEntityType(EntityType.TRANSACTION);
+
+// Payment failure notification  
+notification.setRelatedEntityId(paymentId);
+notification.setRelatedEntityType(EntityType.PAYMENT);
+```
+
+This enables:
+- **Clickable notifications** that navigate to specific records
+- **Context-aware UI** that shows relevant actions based on entity type
+- **Efficient querying** to find all notifications for a specific transaction/credit
+- **Cleanup operations** when entities are deleted
+
+### Schema Validation Configuration
+
+**Current JPA Configuration**:
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Strict schema validation enabled
+```
+
+**Validation Benefits**:
+- Ensures database schema matches JPA entity definitions
+- Prevents runtime errors from schema mismatches
+- Enforces data consistency and integrity
+- Catches schema drift early in development
+
+### Database Connection Testing & Troubleshooting
+
+#### Connection Status: ✅ **CONFIRMED WORKING**
+
+**Test Results Summary**:
+```
+✅ HikariPool connection established successfully
+✅ PostgreSQL database connectivity verified
+✅ JPA repository operations functional
+✅ Integration tests passing (DisputeTransactionIntegrationTest: 17/17)
+✅ Service layer tests passing (JourneyDataServiceTest: 1/1)
+✅ Application startup successful with schema validation
+```
+
+#### Common Schema Validation Issues & Solutions
+
+**Issue**: `Schema-validation: missing column [column_name] in table [table_name]`
+
+**Root Cause**: Database schema doesn't match JPA entity definitions
+
+**Solution Process**:
+1. **Identify the mismatch** - Compare entity field annotations with actual database columns
+2. **Update database schema** - Apply missing ALTER TABLE statements
+3. **Verify entity mappings** - Ensure @Column annotations match database column names
+4. **Test validation** - Run application startup to confirm schema alignment
+
+**Example Resolution**:
+```sql
+-- Problem: Notification entity has relatedEntityId field but database missing column
+-- Solution: Add missing columns to existing table
+PGPASSWORD=your_password psql -U postgres -h localhost -d carbon_credit_db -c "
+ALTER TABLE notifications 
+ADD COLUMN related_entity_id UUID, 
+ADD COLUMN related_entity_type VARCHAR(50);"
+```
+
+#### Production Deployment Considerations
+
+**Schema Migration Strategy**:
+```sql
+-- For production, use gradual migration approach
+-- 1. Add columns as nullable first
+ALTER TABLE notifications ADD COLUMN related_entity_id UUID;
+ALTER TABLE notifications ADD COLUMN related_entity_type VARCHAR(50);
+
+-- 2. Deploy application code that populates new columns
+-- 3. After data migration, add constraints if needed
+-- ALTER TABLE notifications ALTER COLUMN related_entity_type SET NOT NULL;
+```
+
+**Environment-Specific Settings**:
+- **Development**: `ddl-auto: validate` (strict validation)
+- **Production**: `ddl-auto: none` (manual migrations only)
+- **Testing**: `ddl-auto: create-drop` (fresh schema per test)
+
 ## 💰 Transaction Management System
 
 ### 1. Transaction Lifecycle

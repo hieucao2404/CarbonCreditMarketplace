@@ -154,7 +154,9 @@ public class ValidationService {
         }
 
         // check for high-frequencey trading patterns
-        long todayTransactions = transactionRepository.countTodayTransactionsByUser(buyer.getId());
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        long todayTransactions = transactionRepository.countTodayTransactionsByUser(buyer.getId(), startOfDay, endOfDay);
 
         if (todayTransactions > 20) {
             throw new SecurityException("Daily transaction limit exceeded (20/day)");
@@ -163,7 +165,7 @@ public class ValidationService {
 
     // validate transaction limits
     public void validateTransactionLimits(User buyer, BigDecimal amount) {
-        // Sing transaction limit
+        // Single transaction limit
         BigDecimal singleTransactionLimit = new BigDecimal("10000.00");
         if (amount.compareTo(singleTransactionLimit) > 0) {
             throw new SecurityException(
@@ -171,7 +173,9 @@ public class ValidationService {
         }
 
         // Daily spending limit
-        BigDecimal dailySpent = transactionRepository.getDailySpentByUser(buyer.getId());
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        BigDecimal dailySpent = transactionRepository.getDailySpentByUser(buyer.getId(), startOfDay, endOfDay);
         BigDecimal dailyLimit = new BigDecimal("5000.00");
         if (dailySpent.add(amount).compareTo(dailyLimit) > 0) {
             throw new SecurityException("Transcation would exceed daily spending limit: $" + dailyLimit);

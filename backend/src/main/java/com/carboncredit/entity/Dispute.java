@@ -30,6 +30,10 @@ public class Dispute {
     @JoinColumn(name = "raised_by_id")
     private User raisedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resolved_by_id")
+    private User resolvedBy;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
 

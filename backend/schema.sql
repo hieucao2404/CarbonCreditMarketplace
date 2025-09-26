@@ -147,6 +147,8 @@ CREATE TABLE disputes (
     resolved_at TIMESTAMP
 );
 
+ALTER TABLE disputes ADD COLUMN resolved_by_id UUID REFERENCES users(user_id);
+
 -- Price Suggestions table (for AI price recommendations)
 CREATE TABLE price_suggestions (
     suggestion_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -199,5 +201,7 @@ CREATE TABLE notifications (
     title VARCHAR(255) NOT NULL,
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    related_entity_id UUID,
+    related_entity_type VARCHAR(50)
 );

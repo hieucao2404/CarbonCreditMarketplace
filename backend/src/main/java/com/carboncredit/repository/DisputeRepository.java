@@ -143,11 +143,12 @@ public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
     /**
      * Get dispute resolution statistics for a resolver
      */
-    @Query("SELECT " +
-           "COUNT(d) as totalResolved, " +
-           "AVG(EXTRACT(EPOCH FROM (d.resolvedAt - d.createdAt))/3600) as avgResolutionTimeHours " +
-           "FROM Dispute d " +
-           "WHERE d.resolvedBy = :resolverUserId AND d.status = 'RESOLVED'")
+    @Query(value = "SELECT " +
+           "COUNT(d.dispute_id) as totalResolved, " +
+           "AVG(EXTRACT(EPOCH FROM (d.resolved_at - d.created_at))/3600) as avgResolutionTimeHours " +
+           "FROM disputes d " +
+           "WHERE d.resolved_by_id = :resolverUserId AND d.status = 'RESOLVED'", 
+           nativeQuery = true)
     Object[] getResolverStatistics(@Param("resolverUserId") UUID resolverUserId);
     
     /**

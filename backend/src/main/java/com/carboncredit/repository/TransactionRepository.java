@@ -64,14 +64,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         /**
          * Count today's transactions by user (daily limit check)
          */
-        @Query("SELECT COUNT(t) FROM Transaction t WHERE t.buyer.id = :userId AND DATE(t.createdAt) = CURRENT_DATE")
-        long countTodayTransactionsByUser(@Param("userId") UUID userId);
+        @Query("SELECT COUNT(t) FROM Transaction t WHERE t.buyer.id = :userId AND t.createdAt >= :startOfDay AND t.createdAt < :endOfDay")
+        long countTodayTransactionsByUser(@Param("userId") UUID userId, @Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
 
         /**
          * Get daily spending by user (daily limit check)
          */
-        @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.buyer.id = :userId AND DATE(t.createdAt) = CURRENT_DATE AND t.status = 'COMPLETED'")
-        BigDecimal getDailySpentByUser(@Param("userId") UUID userId);
+        @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.buyer.id = :userId AND t.createdAt >= :startOfDay AND t.createdAt < :endOfDay AND t.status = 'COMPLETED'")
+        BigDecimal getDailySpentByUser(@Param("userId") UUID userId, @Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
 
         /**
          * Get average transaction amount by user (fraud detection)
@@ -94,7 +94,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
         /**
          * Find transactions with payment reference
          */
-        @Query("SELECT t FROM Transaction t WHERE t.paymentReference = :paymentReference")
+        @Query("SELECT t FROM Transaction t JOIN Payment p ON p.transaction.id = t.id WHERE p.paymentReference = :paymentReference")
         Optional<Transaction> findByPaymentReference(@Param("paymentReference") String paymentReference);
 
         /**

@@ -75,7 +75,7 @@ public class DisputeService {
         dispute.setStatus(DisputeStatus.RESOLVED);
         dispute.setResolution(resolution);
         dispute.setResolvedAt(LocalDateTime.now());
-        // dispute.setResolvedBy(resolver);
+        dispute.setResolvedBy(resolver);
 
         Dispute resolvedDispute = disputeRepository.save(dispute);
 
@@ -111,7 +111,7 @@ public class DisputeService {
         dispute.setStatus(DisputeStatus.CLOSED);
         dispute.setResolution("Dispute closed: " + reason);
         dispute.setResolvedAt(LocalDateTime.now());
-        // dispute.setResolvedBy();
+        dispute.setResolvedBy(closer);
 
         Dispute closedDispute = disputeRepository.save(dispute);
 
