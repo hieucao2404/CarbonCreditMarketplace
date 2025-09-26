@@ -76,7 +76,7 @@ CREATE TABLE credit_listings (
 );
 
 -- add updated_at collum to the credit_listings table
-ALTER TABLE credit_listings ADD COLUMN update_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE credit_listings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 -- A trigger to automatically update the timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -176,3 +176,28 @@ CREATE INDEX idx_transaction_seller_id ON transactions(seller_id);
 CREATE INDEX idx_wallet_user_id ON wallets(user_id);
 CREATE INDEX idx_certificate_buyer_id ON certificates(buyer_id);
 CREATE INDEX idx_audit_credit_id ON audit_logs(credit_id);
+
+DROP TABLE price_suggestions;
+DROP TABLE reports;
+
+CREATE TABLE payments (
+    payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID REFERENCES transactions(transaction_id),
+    payer_id UUID REFERENCES users(user_id),
+    payee_id UUID REFERENCES users(user_id),
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL,
+    payment_status VARCHAR(20) NOT NULL,
+    payment_reference VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE notifications (
+    notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(user_id),
+    notification_type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

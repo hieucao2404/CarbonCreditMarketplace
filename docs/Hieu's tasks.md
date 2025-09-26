@@ -496,4 +496,585 @@ One-to-one with journey	One-to-one with credit (when listed)
 
 # CREDIT LISTING
  Create new attrite updated time for creditlisting table
+
+## 💰 Transaction Management System
+
+### 1. Transaction Lifecycle
+
+**Transaction Flow**:
+```
+Credit Listed → Buyer Initiates Purchase → Payment Processing → Transaction Created → Credit Transferred → Transaction Completed
+```
+
+**Transaction States**:
+```
+PENDING → PROCESSING → COMPLETED
+    ↓         ↓           ↓
+ FAILED   CANCELLED   DISPUTED
+```
+
+### 2. Transaction Entity Structure
+
+```java
+@Entity
+@Table(name = "transactions")
+public class Transaction {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    
+    @ManyToOne
+    @JoinColumn(name = "buyer_id", nullable = false)
+    private User buyer;
+    
+    @ManyToOne
+    @JoinColumn(name = "seller_id", nullable = false)
+    private User seller;
+    
+    @ManyToOne
+    @JoinColumn(name = "credit_id", nullable = false)
+    private CarbonCredit credit;
+    
+    @ManyToOne
+    @JoinColumn(name = "listing_id", nullable = false)
+    private CreditListing listing;
+    
+    @Column(name = "amount", precision = 12, scale = 6)
+    private BigDecimal amount; // Credit amount purchased
+    
+    @Column(name = "price_per_credit", precision = 10, scale = 2)
+    private BigDecimal pricePerCredit;
+    
+    @Column(name = "total_price", precision = 12, scale = 2)
+    private BigDecimal totalPrice;
+    
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+    
+    @Column(name = "payment_method")
+    private String paymentMethod;
+    
+    @Column(name = "notes", length = 500)
+    private String notes;
+}
+
+public enum TransactionStatus {
+    PENDING,     // Transaction initiated
+    PROCESSING,  // Payment being processed
+    COMPLETED,   // Successfully completed
+    FAILED,      // Payment/processing failed
+    CANCELLED,   // Cancelled by user/system
+    DISPUTED     // Under dispute resolution
+}
+```
+
+### 3. Transaction Business Logic
+
+**Purchase Initiation**:
+```java
+@Transactional
+public Transaction initiatePurchase(User buyer, UUID listingId, BigDecimal amount) {
+    // Validate listing availability
+    CreditListing listing = validateListingForPurchase(listingId, amount);
+    
+    // Calculate pricing
+    BigDecimal totalPrice = listing.getPrice().multiply(amount);
+    
+    // Create transaction record
+    Transaction transaction = Transaction.builder()
+        .buyer(buyer)
+        .seller(listing.getCarbonCredit().getUser())
+        .credit(listing.getCarbonCredit())
+        .listing(listing)
+        .amount(amount)
+        .pricePerCredit(listing.getPrice())
+        .totalPrice(totalPrice)
+        .status(TransactionStatus.PENDING)
+        .createdAt(LocalDateTime.now())
+        .paymentMethod("CREDIT_CARD") // Default or from request
+        .build();
+    
+    Transaction saved = transactionRepository.save(transaction);
+    
+    // Initiate payment processing
+    Payment payment = paymentService.initiatePayment(saved);
+    
+    // Update transaction status
+    saved.setStatus(TransactionStatus.PROCESSING);
+    
+    log.info("Purchase initiated: {} credits from listing {} by user {}", 
+        amount, listingId, buyer.getUsername());
+    
+    return transactionRepository.save(saved);
+}
+```
+
+**Transaction Completion**:
+```java
+@Transactional
+public Transaction completeTransaction(UUID transactionId) {
+    Transaction transaction = findTransactionById(transactionId);
+    
+    // Validate transaction can be completed
+    if (transaction.getStatus() != TransactionStatus.PROCESSING) {
+        throw new IllegalStateException("Transaction not in processing state");
+    }
+    
+    // Verify payment completion
+    Payment payment = paymentService.getPaymentByTransaction(transactionId);
+    if (payment.getStatus() != PaymentStatus.COMPLETED) {
+        throw new IllegalStateException("Payment not completed");
+    }
+    
+    // Transfer credit ownership
+    CarbonCredit credit = transaction.getCredit();
+    credit.setUser(transaction.getBuyer());
+    credit.setStatus(CreditStatus.SOLD);
+    carbonCreditRepository.save(credit);
+    
+    // Update listing status
+    CreditListing listing = transaction.getListing();
+    listing.setAvailableAmount(listing.getAvailableAmount().subtract(transaction.getAmount()));
+    
+    if (listing.getAvailableAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        listing.setStatus(ListingStatus.SOLD_OUT);
+    }
+    creditListingRepository.save(listing);
+    
+    // Complete transaction
+    transaction.setStatus(TransactionStatus.COMPLETED);
+    transaction.setCompletedAt(LocalDateTime.now());
+    
+    // Send notifications
+    notificationService.sendTransactionCompletedNotification(transaction);
+    
+    log.info("Transaction {} completed successfully", transactionId);
+    return transactionRepository.save(transaction);
+}
+```
+
+### 4. Transaction Analytics and Statistics
+
+```java
+public TransactionStatistics getTransactionStatistics(User user) {
+    // Get user's buy/sell transactions
+    List<Transaction> buyTransactions = transactionRepository.findByBuyer(user);
+    List<Transaction> sellTransactions = transactionRepository.findBySeller(user);
+    
+    // Calculate buy statistics
+    long totalPurchases = buyTransactions.size();
+    BigDecimal totalSpent = buyTransactions.stream()
+        .filter(t -> t.getStatus() == TransactionStatus.COMPLETED)
+        .map(Transaction::getTotalPrice)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    
+    BigDecimal totalCreditsPurchased = buyTransactions.stream()
+        .filter(t -> t.getStatus() == TransactionStatus.COMPLETED)
+        .map(Transaction::getAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    
+    // Calculate sell statistics  
+    long totalSales = sellTransactions.size();
+    BigDecimal totalEarned = sellTransactions.stream()
+        .filter(t -> t.getStatus() == TransactionStatus.COMPLETED)
+        .map(Transaction::getTotalPrice)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    
+    BigDecimal totalCreditsSold = sellTransactions.stream()
+        .filter(t -> t.getStatus() == TransactionStatus.COMPLETED)
+        .map(Transaction::getAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    
+    // Calculate averages
+    BigDecimal averagePurchasePrice = totalPurchases > 0 ? 
+        totalSpent.divide(BigDecimal.valueOf(totalPurchases), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+    
+    BigDecimal averageSalePrice = totalSales > 0 ? 
+        totalEarned.divide(BigDecimal.valueOf(totalSales), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+    
+    return TransactionStatistics.builder()
+        .totalPurchases(totalPurchases)
+        .totalSales(totalSales)
+        .totalSpent(totalSpent)
+        .totalEarned(totalEarned)
+        .totalCreditsPurchased(totalCreditsPurchased)
+        .totalCreditsSold(totalCreditsSold)
+        .averagePurchasePrice(averagePurchasePrice)
+        .averageSalePrice(averageSalePrice)
+        .netBalance(totalEarned.subtract(totalSpent))
+        .build();
+}
+```
+
+## ⚖️ Dispute Resolution System
+
+### 1. Dispute Lifecycle and States
+
+**Dispute Flow**:
+```
+Transaction Issue → Dispute Raised → CVA Review → Investigation → Resolution
+                                         ↓
+                                   [OPEN] → [UNDER_REVIEW] → [RESOLVED/REJECTED]
+```
+
+**Dispute States**:
+```java
+public enum DisputeStatus {
+    OPEN,           // Newly created, awaiting CVA assignment
+    UNDER_REVIEW,   // CVA investigating the dispute
+    RESOLVED,       // Dispute resolved in favor of disputant
+    REJECTED,       // Dispute rejected (no grounds found)
+    CLOSED          // Administratively closed
+}
+
+public enum DisputeReason {
+    CREDIT_QUALITY,      // Issues with carbon credit verification/quality
+    PAYMENT_ISSUE,       // Payment processing problems
+    DELIVERY_FAILURE,    // Credit transfer not completed
+    FRAUD_SUSPECTED,     // Suspected fraudulent activity
+    TECHNICAL_ERROR,     // System/technical issues
+    OTHER               // Other reasons (requires description)
+}
+```
+
+### 2. Dispute Entity Structure
+
+```java
+@Entity
+@Table(name = "disputes")
+public class Dispute {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    
+    @ManyToOne
+    @JoinColumn(name = "transaction_id", nullable = false)
+    private Transaction transaction;
+    
+    @ManyToOne
+    @JoinColumn(name = "raised_by_id", nullable = false)
+    private User raisedBy;
+    
+    @ManyToOne
+    @JoinColumn(name = "assigned_cva_id")
+    private User assignedCva;
+    
+    @Enumerated(EnumType.STRING)
+    private DisputeReason reason;
+    
+    @Enumerated(EnumType.STRING)
+    private DisputeStatus status;
+    
+    @Column(name = "description", length = 1000)
+    private String description;
+    
+    @Column(name = "resolution", length = 1000)
+    private String resolution;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+    
+    @Column(name = "priority")
+    private Integer priority; // 1 = High, 2 = Medium, 3 = Low
+}
+```
+
+### 3. Dispute Management Logic
+
+**Creating a Dispute**:
+```java
+@Transactional
+public Dispute createDispute(UUID transactionId, User disputant, DisputeReason reason, String description) {
+    Transaction transaction = findTransactionById(transactionId);
+    
+    // Validate disputant has standing to raise dispute
+    validateDisputeEligibility(transaction, disputant);
+    
+    // Check for existing open disputes
+    Optional<Dispute> existingDispute = disputeRepository.findOpenDisputeByTransaction(transactionId);
+    if (existingDispute.isPresent()) {
+        throw new BusinessOperationException("Transaction already has an open dispute");
+    }
+    
+    // Create dispute
+    Dispute dispute = Dispute.builder()
+        .transaction(transaction)
+        .raisedBy(disputant)
+        .reason(reason)
+        .description(description)
+        .status(DisputeStatus.OPEN)
+        .priority(calculateDisputePriority(reason, transaction))
+        .createdAt(LocalDateTime.now())
+        .build();
+    
+    Dispute saved = disputeRepository.save(dispute);
+    
+    // Mark transaction as disputed
+    transactionService.markAsDisputed(transactionId);
+    
+    // Notify CVA team
+    notificationService.sendDisputeCreatedNotification(saved);
+    
+    log.info("Dispute {} created for transaction {} by user {}", 
+        saved.getId(), transactionId, disputant.getUsername());
+    
+    return saved;
+}
+
+private void validateDisputeEligibility(Transaction transaction, User disputant) {
+    // Only buyer or seller can raise dispute
+    if (!transaction.getBuyer().getId().equals(disputant.getId()) && 
+        !transaction.getSeller().getId().equals(disputant.getId())) {
+        throw new UnauthorizedOperationException("Only transaction participants can raise disputes");
+    }
+    
+    // Cannot dispute pending transactions
+    if (transaction.getStatus() == TransactionStatus.PENDING) {
+        throw new BusinessOperationException("Cannot dispute pending transactions");
+    }
+    
+    // Time limit for disputes (e.g., 30 days after completion)
+    if (transaction.getCompletedAt() != null && 
+        transaction.getCompletedAt().isBefore(LocalDateTime.now().minusDays(30))) {
+        throw new BusinessOperationException("Dispute period has expired");
+    }
+}
+
+private Integer calculateDisputePriority(DisputeReason reason, Transaction transaction) {
+    // High priority: Fraud, large amounts
+    if (reason == DisputeReason.FRAUD_SUSPECTED || 
+        transaction.getTotalPrice().compareTo(new BigDecimal("1000")) > 0) {
+        return 1;
+    }
+    
+    // Medium priority: Payment issues, delivery failures
+    if (reason == DisputeReason.PAYMENT_ISSUE || reason == DisputeReason.DELIVERY_FAILURE) {
+        return 2;
+    }
+    
+    // Low priority: Other reasons
+    return 3;
+}
+```
+
+**Dispute Resolution Process**:
+```java
+@Transactional
+public Dispute resolveDispute(UUID disputeId, User cva, DisputeStatus resolution, String resolutionNotes) {
+    Dispute dispute = findDisputeById(disputeId);
+    
+    // Validate CVA authority
+    if (!cva.getRole().equals("CVA")) {
+        throw new UnauthorizedOperationException("Only CVA can resolve disputes");
+    }
+    
+    if (dispute.getStatus() != DisputeStatus.UNDER_REVIEW && dispute.getStatus() != DisputeStatus.OPEN) {
+        throw new IllegalStateException("Dispute not in reviewable state");
+    }
+    
+    // Apply resolution
+    dispute.setStatus(resolution);
+    dispute.setResolution(resolutionNotes);
+    dispute.setResolvedAt(LocalDateTime.now());
+    dispute.setAssignedCva(cva);
+    
+    Dispute resolved = disputeRepository.save(dispute);
+    
+    // Handle resolution outcomes
+    if (resolution == DisputeStatus.RESOLVED) {
+        handleDisputeResolved(dispute);
+    } else if (resolution == DisputeStatus.REJECTED) {
+        handleDisputeRejected(dispute);
+    }
+    
+    // Update transaction status
+    transactionService.resolveDisputedTransaction(dispute.getTransaction().getId(), resolution);
+    
+    // Notify parties
+    notificationService.sendDisputeResolvedNotification(resolved);
+    
+    log.info("Dispute {} resolved as {} by CVA {}", disputeId, resolution, cva.getUsername());
+    return resolved;
+}
+
+private void handleDisputeResolved(Dispute dispute) {
+    Transaction transaction = dispute.getTransaction();
+    
+    switch (dispute.getReason()) {
+        case PAYMENT_ISSUE:
+            // Refund buyer, reverse transaction
+            paymentService.processRefund(transaction);
+            break;
+            
+        case DELIVERY_FAILURE:
+            // Re-attempt credit transfer or refund
+            if (!creditTransferService.retryTransfer(transaction)) {
+                paymentService.processRefund(transaction);
+            }
+            break;
+            
+        case CREDIT_QUALITY:
+            // Refund and flag credit for re-verification
+            paymentService.processRefund(transaction);
+            carbonCreditService.flagForReVerification(transaction.getCredit());
+            break;
+            
+        case FRAUD_SUSPECTED:
+            // Refund, freeze accounts, escalate
+            paymentService.processRefund(transaction);
+            userService.freezeAccount(transaction.getSeller(), "Fraud investigation");
+            break;
+    }
+}
+```
+
+### 4. Dispute Analytics and Monitoring
+
+```java
+public DisputeAnalytics getDisputeAnalytics() {
+    List<Dispute> allDisputes = disputeRepository.findAll();
+    
+    // Status distribution
+    Map<DisputeStatus, Long> statusCounts = allDisputes.stream()
+        .collect(Collectors.groupingBy(Dispute::getStatus, Collectors.counting()));
+    
+    // Reason distribution
+    Map<DisputeReason, Long> reasonCounts = allDisputes.stream()
+        .collect(Collectors.groupingBy(Dispute::getReason, Collectors.counting()));
+    
+    // Resolution time analysis
+    List<Dispute> resolvedDisputes = allDisputes.stream()
+        .filter(d -> d.getResolvedAt() != null)
+        .toList();
+    
+    OptionalDouble averageResolutionTime = resolvedDisputes.stream()
+        .mapToLong(d -> ChronoUnit.HOURS.between(d.getCreatedAt(), d.getResolvedAt()))
+        .average();
+    
+    // Dispute rate analysis
+    long totalTransactions = transactionRepository.count();
+    long disputedTransactions = allDisputes.size();
+    double disputeRate = totalTransactions > 0 ? (double) disputedTransactions / totalTransactions * 100 : 0.0;
+    
+    return DisputeAnalytics.builder()
+        .totalDisputes(allDisputes.size())
+        .openDisputes(statusCounts.getOrDefault(DisputeStatus.OPEN, 0L))
+        .underReviewDisputes(statusCounts.getOrDefault(DisputeStatus.UNDER_REVIEW, 0L))
+        .resolvedDisputes(statusCounts.getOrDefault(DisputeStatus.RESOLVED, 0L))
+        .rejectedDisputes(statusCounts.getOrDefault(DisputeStatus.REJECTED, 0L))
+        .reasonDistribution(reasonCounts)
+        .averageResolutionTimeHours(averageResolutionTime.orElse(0.0))
+        .disputeRate(disputeRate)
+        .build();
+}
+
+@Scheduled(cron = "0 0 9 * * MON") // Every Monday at 9 AM
+public void generateDisputeReport() {
+    DisputeAnalytics analytics = getDisputeAnalytics();
+    
+    // Find overdue disputes (open for more than 48 hours)
+    List<Dispute> overdueDisputes = disputeRepository.findOpenDisputesOlderThan(
+        LocalDateTime.now().minusHours(48));
+    
+    // Generate report
+    String report = String.format("""
+        Weekly Dispute System Report
+        ===========================
+        
+        Summary:
+        - Total Disputes: %d
+        - Open: %d (Overdue: %d)
+        - Under Review: %d  
+        - Resolved: %d
+        - Rejected: %d
+        
+        Performance:
+        - Average Resolution Time: %.1f hours
+        - Dispute Rate: %.2f%%
+        
+        Top Reasons:
+        %s
+        """, 
+        analytics.getTotalDisputes(),
+        analytics.getOpenDisputes(),
+        overdueDisputes.size(),
+        analytics.getUnderReviewDisputes(),
+        analytics.getResolvedDisputes(),
+        analytics.getRejectedDisputes(),
+        analytics.getAverageResolutionTimeHours(),
+        analytics.getDisputeRate(),
+        formatReasonDistribution(analytics.getReasonDistribution())
+    );
+    
+    // Send to administrators
+    notificationService.sendAdminReport("Dispute System Weekly Report", report);
+    
+    log.info("Weekly dispute report generated: {} total disputes, {} overdue", 
+        analytics.getTotalDisputes(), overdueDisputes.size());
+}
+```
+
+### 5. Integration Between Transaction and Dispute Systems
+
+**Transaction-Dispute Workflow**:
+```java
+@Transactional
+public Transaction markAsDisputed(UUID transactionId) {
+    Transaction transaction = findTransactionById(transactionId);
+    
+    // Update transaction status
+    transaction.setStatus(TransactionStatus.DISPUTED);
+    
+    // Freeze any pending payments/transfers
+    if (transaction.getStatus() == TransactionStatus.PROCESSING) {
+        paymentService.freezePayment(transactionId);
+    }
+    
+    // Prevent further actions on associated listing
+    creditListingService.suspendListing(transaction.getListing().getId(), "Under dispute");
+    
+    return transactionRepository.save(transaction);
+}
+
+@Transactional  
+public Transaction resolveDisputedTransaction(UUID transactionId, DisputeStatus disputeResolution) {
+    Transaction transaction = findTransactionById(transactionId);
+    
+    if (transaction.getStatus() != TransactionStatus.DISPUTED) {
+        throw new IllegalStateException("Transaction not in disputed state");
+    }
+    
+    // Apply resolution outcome to transaction
+    if (disputeResolution == DisputeStatus.RESOLVED) {
+        // Dispute was upheld - typically means refund/reversal
+        transaction.setStatus(TransactionStatus.CANCELLED);
+        creditListingService.reactivateListing(transaction.getListing().getId());
+        
+    } else if (disputeResolution == DisputeStatus.REJECTED) {
+        // Dispute was rejected - transaction stands as completed
+        transaction.setStatus(TransactionStatus.COMPLETED);
+        if (transaction.getCompletedAt() == null) {
+            transaction.setCompletedAt(LocalDateTime.now());
+        }
+    }
+    
+    return transactionRepository.save(transaction);
+}
+```
+
+This comprehensive transaction and dispute system provides:
+- **Secure Transaction Processing**: Full lifecycle management with proper validation
+- **Dispute Resolution**: Fair and transparent dispute handling with CVA oversight  
+- **Analytics and Monitoring**: Comprehensive tracking and reporting capabilities
+- **Integration**: Seamless integration between transactions, disputes, and the broader marketplace
+- **Compliance**: Proper audit trails and regulatory compliance features
  
