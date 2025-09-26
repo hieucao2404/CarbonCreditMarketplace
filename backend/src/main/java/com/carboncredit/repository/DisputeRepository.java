@@ -3,6 +3,9 @@ package com.carboncredit.repository;
 import com.carboncredit.entity.Dispute;
 import com.carboncredit.entity.Dispute.DisputeStatus;
 import com.carboncredit.entity.User;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,8 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-
-public interface DisputeRepository {
+@Repository
+public interface DisputeRepository extends JpaRepository<Dispute, UUID> {
 
     // ==================== BASIC QUERIES ====================
     
@@ -22,6 +25,8 @@ public interface DisputeRepository {
      * Find disputes by status
      */
     List<Dispute> findByStatus(DisputeStatus status);
+
+    Page<Dispute> findByStatus(DisputeStatus status, Pageable pageable);
     
     /**
      * Find disputes raised by a specific user
@@ -48,7 +53,7 @@ public interface DisputeRepository {
            "d.transaction.buyer.id = :userId OR " +
            "d.transaction.seller.id = :userId " +
            "ORDER BY d.createdAt DESC")
-    List<Dispute> findByUserInvolvedOrderByCreatedAtDesc(@Param("userId") UUID userId);
+    Page<Dispute> findByUserInvolvedOrderByCreatedAtDesc(@Param("userId") UUID userId, Pageable pageable);
     
     /**
      * Find open disputes for admin/CVA review
@@ -66,7 +71,7 @@ public interface DisputeRepository {
      * Find disputes resolved by a specific user
      */
     @Query("SELECT d FROM Dispute d WHERE d.resolvedBy = :resolverUserId AND d.status = 'RESOLVED' ORDER BY d.resolvedAt DESC")
-    List<Dispute> findByResolvedByOrderByResolvedAtDesc(@Param("resolverUserId") UUID resolverUserId);
+    Page<Dispute> findByResolvedByOrderByResolvedAtDesc(@Param("resolverUserId") UUID resolverUserId, Pageable pageable);
     
     /**
      * Find disputes created within date range
@@ -152,7 +157,7 @@ public interface DisputeRepository {
            "LOWER(d.reason) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(COALESCE(d.resolution, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "ORDER BY d.createdAt DESC")
-    List<Dispute> findByKeyword(@Param("keyword") String keyword);
+    Page<Dispute> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
     
     /**
      * Find the most recent dispute for a transaction
