@@ -202,6 +202,6 @@ CREATE TABLE notifications (
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    related_entity_id UUID,
-    related_entity_type VARCHAR(50)
 );
+
+ALTER TABLE notifications ADD COLUMN related_entity_id UUID, ADD COLUMN related_entity_type VARCHAR(50);
