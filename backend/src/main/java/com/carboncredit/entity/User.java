@@ -32,6 +32,9 @@ public class User {
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+    
+    @Column(name = "password", length = 255)
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -48,7 +51,7 @@ public class User {
     @Column(unique = true, length = 20)
     private String phone;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
     // Relationships

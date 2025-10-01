@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.carboncredit.entity.Vehicle;
+import com.carboncredit.entity.User;
 import com.carboncredit.repository.VehicleRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,14 @@ public class VehicleService {
 
     public Vehicle createVehicle(Vehicle vehicle) {
         if (vehicleRepository.existsByVin(vehicle.getVin())) {
-            throw new RuntimeException("Vehicle with VIN already exists");
+            throw new IllegalArgumentException("Vehicle with VIN already exists: " + vehicle.getVin());
         }
+        
+        // Validate required fields
+        if (vehicle.getUser() == null) {
+            throw new IllegalArgumentException("Vehicle must be associated with a user");
+        }
+        
         return vehicleRepository.save(vehicle);
     }
 
@@ -51,5 +58,18 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<Vehicle> getAllVehicles() {
         return vehicleRepository.findAll();
+    }
+    
+    @Transactional(readOnly = true)
+    public List<Vehicle> findByUser(User user) {
+        return vehicleRepository.findByUser(user);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<Vehicle> findByUserId(UUID userId) {
+        // This would require the user to be fetched, but for now we'll keep it simple
+        return vehicleRepository.findAll().stream()
+            .filter(vehicle -> vehicle.getUser().getId().equals(userId))
+            .toList();
     }
 }

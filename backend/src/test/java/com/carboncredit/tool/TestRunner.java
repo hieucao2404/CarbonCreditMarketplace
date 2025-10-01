@@ -38,7 +38,7 @@ public class TestRunner {
 
         // Initialize services (with null repositories for testing calculation logic)
         validationService = new ValidationService();
-        carbonCreditService = new CarbonCreditService(null);
+        carbonCreditService = new CarbonCreditService(null, null); // repo, auditService
         journeyDataService = new JourneyDataService(null, carbonCreditService, validationService);
         creditListingService = new CreditListingService(null, null, validationService);
 

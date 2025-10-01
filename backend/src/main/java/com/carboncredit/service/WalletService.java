@@ -33,4 +33,35 @@ public class WalletService {
     public Optional<Wallet> findByUserId(UUID userId) {
         return walletRepository.findByUserId(userId);
     }
+    
+    public Wallet getOrCreateWallet(User user) {
+        return findByUserId(user.getId())
+            .orElseGet(() -> createWalletForUser(user));
+    }
+    
+    public Wallet updateCreditBalance(UUID userId, BigDecimal amount) {
+        Wallet wallet = findByUserId(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
+        
+        if (amount.compareTo(BigDecimal.ZERO) < 0 && 
+            wallet.getCreditBalance().add(amount).compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Insufficient credit balance");
+        }
+        
+        wallet.setCreditBalance(wallet.getCreditBalance().add(amount));
+        return walletRepository.save(wallet);
+    }
+    
+    public Wallet updateCashBalance(UUID userId, BigDecimal amount) {
+        Wallet wallet = findByUserId(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
+        
+        if (amount.compareTo(BigDecimal.ZERO) < 0 && 
+            wallet.getCashBalance().add(amount).compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Insufficient cash balance");
+        }
+        
+        wallet.setCashBalance(wallet.getCashBalance().add(amount));
+        return walletRepository.save(wallet);
+    }
 }

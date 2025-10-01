@@ -21,10 +21,20 @@ public class UserService {
 
     public User createUser(User user) {
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new IllegalArgumentException("Username already exists: " + user.getUsername());
         }
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
+        }
+        
+        // Validate required fields
+        if (user.getFullName() == null || user.getFullName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Full name is required");
+        }
+        
+        // Validate phone if provided
+        if (user.getPhone() != null && userRepository.existsByPhone(user.getPhone())) {
+            throw new IllegalArgumentException("Phone number already exists: " + user.getPhone());
         }
 
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
@@ -67,6 +77,37 @@ public class UserService {
     @Transactional(readOnly = true)
     public Optional<User> findByEmailOrPhone(String input) {
         return userRepository.findByEmailOrPhone(input);
+    }
+    
+    // Simple login method using plain text password
+    public boolean authenticateUser(String username, String password) {
+        Optional<User> user = findByUsername(username);
+        if (user.isPresent()) {
+            // First try simple password comparison
+            if (user.get().getPassword() != null && user.get().getPassword().equals(password)) {
+                return true;
+            }
+            // Fallback to BCrypt if using password_hash
+            if (user.get().getPasswordHash() != null && passwordEncoder.matches(password, user.get().getPasswordHash())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Method to create user with simple password
+    public User createUserWithSimplePassword(String username, String email, String password, 
+                                           String fullName, String phone, User.UserRole role) {
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(password); // Store as plain text
+        user.setPasswordHash(passwordEncoder.encode(password)); // Also store hashed version
+        user.setFullName(fullName);
+        user.setPhone(phone);
+        user.setRole(role);
+        
+        return createUser(user);
     }
 
 }

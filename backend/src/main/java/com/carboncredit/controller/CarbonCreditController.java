@@ -1,5 +1,6 @@
 package com.carboncredit.controller;
 
+import com.carboncredit.dto.VerifyRequest;
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.User;
 import com.carboncredit.service.CarbonCreditService;
@@ -52,15 +53,17 @@ public class CarbonCreditController {
     }
     
     @PostMapping("/{creditId}/verify")
-    public ResponseEntity<CarbonCredit> verifyCredit(@PathVariable UUID creditId, Authentication authentication) {
+    public ResponseEntity<CarbonCredit> verifyCredit(@PathVariable UUID creditId, @RequestBody(required = false) VerifyRequest request, Authentication authentication) {
         // In a real app, you'd get the user from the authentication
+        // Implement user authentiation
         User verifier = userService.findByUsername(authentication.getName()).orElse(null);
-        if (verifier == null || verifier.getRole() != User.UserRole.CVA) {
+        if(verifier == null || verifier.getRole() != User.UserRole.CVA) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        
+
         try {
-            CarbonCredit verified = carbonCreditService.verifyCarbonCredit(creditId, verifier);
+            String comments = request == null ? null : request.getComments();
+            CarbonCredit verified = carbonCreditService.verifyCarbonCredit(creditId, verifier, comments) ;
             return ResponseEntity.ok(verified);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -68,14 +71,15 @@ public class CarbonCreditController {
     }
     
     @PostMapping("/{creditId}/reject")
-    public ResponseEntity<CarbonCredit> rejectCredit(@PathVariable UUID creditId, Authentication authentication) {
+    public ResponseEntity<CarbonCredit> rejectCredit(@PathVariable UUID creditId, @RequestBody(required = false) VerifyRequest request, Authentication authentication) {
         User verifier = userService.findByUsername(authentication.getName()).orElse(null);
         if (verifier == null || verifier.getRole() != User.UserRole.CVA) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
         try {
-            CarbonCredit rejected = carbonCreditService.rejectCarbonCredit(creditId, verifier);
+            String comments = request == null ? null : request.getComments();
+            CarbonCredit rejected = carbonCreditService.rejectCarbonCredit(creditId, verifier, comments);
             return ResponseEntity.ok(rejected);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

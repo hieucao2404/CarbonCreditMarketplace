@@ -5,8 +5,6 @@ import com.carboncredit.entity.User;
 import com.carboncredit.service.UserService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.Scanner;
@@ -17,27 +15,31 @@ public class LoginTestRunner {
 
         UserService userService = context.getBean(UserService.class);
         Scanner scanner = new Scanner(System.in);
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-        System.out.print("Enter email or phone: ");
+        System.out.print("Enter username: ");
         String username = scanner.nextLine();
 
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        Optional<User> foundUser = userService.findByEmailOrPhone(username);
-
-        if (foundUser.isPresent()) {
-            User user = foundUser.get();
-            if (passwordEncoder.matches(password, user.getPasswordHash())) {
-                System.out.println("✅ Login successful! User role: " + user.getRole());
-            } else {
-                System.out.println("❌ Wrong password");
+        // Try simple authentication first
+        boolean authenticated = userService.authenticateUser(username, password);
+        
+        if (authenticated) {
+            Optional<User> foundUser = userService.findByUsername(username);
+            if (foundUser.isPresent()) {
+                User user = foundUser.get();
+                System.out.println("✅ Login successful!");
+                System.out.println("Username: " + user.getUsername());
+                System.out.println("Role: " + user.getRole());
+                System.out.println("Email: " + user.getEmail());
+                System.out.println("Full Name: " + user.getFullName());
             }
         } else {
-            System.out.println("❌ User not found");
+            System.out.println("❌ Invalid username or password!");
         }
 
+        scanner.close();
         context.close();
     }
 }

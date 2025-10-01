@@ -29,7 +29,7 @@ VALUES
 
   --them cot phone vao
   ALTER TABLE users ADD COLUMN phone VARCHAR(20) UNIQUE;
-  ALTER TABLE users ADD COLUMN fullname VARCHAR(100);
+  ALTER TABLE users ADD COLUMN full_name VARCHAR(100) NOT NULL;
 
 -- EV Vehicles table
 CREATE TABLE vehicles (
@@ -205,7 +205,7 @@ CREATE TABLE notifications (
     title VARCHAR(255) NOT NULL,
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE notifications ADD COLUMN related_entity_id UUID, ADD COLUMN related_entity_type VARCHAR(50);

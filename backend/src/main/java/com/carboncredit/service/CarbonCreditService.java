@@ -27,6 +27,7 @@ import java.util.UUID;
 public class CarbonCreditService {
 
     private final CarbonCreditRepository carbonCreditRepository;
+    private final AuditService auditService;
 
     public BigDecimal calculateCO2Reduction(BigDecimal distanceKm, BigDecimal energyConsumeKwh) {
         // avergage gasoline car emission
@@ -56,25 +57,58 @@ public class CarbonCreditService {
         return carbonCreditRepository.save(credit);
     }
 
-    public CarbonCredit verifyCarbonCredit(UUID creditId, User verifier) {
+    public CarbonCredit verifyCarbonCredit(UUID creditId, User verifier, String comments) {
+        // role enforcement at service level
+        if (verifier == null || verifier.getRole() != User.UserRole.CVA) {
+            throw new SecurityException("Only CVA users can verify carbon credits");
+        }
         CarbonCredit credit = carbonCreditRepository.findById(creditId)
                 .orElseThrow(() -> new RuntimeException("Carbon credit not found"));
+        // Idempotent: if already verified, return existing object (no duplicate credit)
+        if (credit.getStatus() == CarbonCredit.CreditStatus.VERIFIED) {
+            return credit;
+        }
+
+        BigDecimal beforeAmount = credit.getCreditAmount();
 
         credit.setStatus(CarbonCredit.CreditStatus.VERIFIED);
         credit.setVerifiedAt(LocalDateTime.now());
         // Recalculate credit amount with VERIFIED status for better rate
         credit.setCreditAmount(calculateCreditAmount(credit.getCo2ReducedKg(), CarbonCredit.CreditStatus.VERIFIED));
 
-        return carbonCreditRepository.save(credit);
+        CarbonCredit saved = carbonCreditRepository.save(credit);
+
+        // persisit audit recored (before/after amounts)
+        try {
+            auditService.logVerification(saved, verifier, beforeAmount, saved.getCreditAmount(), comments);
+        } catch (Exception e) {
+            // Log
+            log.warn("Failed to write audit log for credit {}: {}", creditId, e.getMessage());
+
+        }
+
+        return saved;
     }
 
-    public CarbonCredit rejectCarbonCredit(UUID creditId, User verifier) {
+    public CarbonCredit rejectCarbonCredit(UUID creditId, User verifier, String comments) {
         CarbonCredit credit = carbonCreditRepository.findById(creditId)
                 .orElseThrow(() -> new RuntimeException("Carbon credit not found"));
 
-        credit.setStatus(CarbonCredit.CreditStatus.REJECTED);
+        // Idempotent: if already rejected return
+        if (credit.getStatus() == CarbonCredit.CreditStatus.REJECTED) {
+            return credit;
+        }
 
-        return carbonCreditRepository.save(credit);
+        credit.setStatus(CarbonCredit.CreditStatus.REJECTED);
+        CarbonCredit saved = carbonCreditRepository.save(credit);
+
+        try {
+            auditService.logRejection(saved, verifier, comments);
+        } catch (Exception e) {
+            log.warn("Failed to write audit log for rejection of credit {}: {}", creditId, e.getMessage());
+        }
+
+        return saved;
     }
 
     @Transactional(readOnly = true)

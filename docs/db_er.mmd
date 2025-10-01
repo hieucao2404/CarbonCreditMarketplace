@@ -1,0 +1,188 @@
+erDiagram
+    USERS {
+        UUID user_id PK
+        VARCHAR username
+        VARCHAR email
+        VARCHAR password_hash
+        VARCHAR role     "EV_OWNER | BUYER | CVA | ADMIN"
+        VARCHAR phone
+        VARCHAR full_name
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    VEHICLES {
+        UUID vehicle_id PK
+        UUID user_id FK
+        VARCHAR vin
+        VARCHAR model
+        DATE registration_date
+        TIMESTAMP created_at
+    }
+
+    JOURNEY_DATA {
+        UUID journey_id PK
+        UUID vehicle_id FK
+        UUID user_id FK
+        DECIMAL distance_km
+        DECIMAL energy_consumed_kwh
+        TIMESTAMP start_time
+        TIMESTAMP end_time
+        DECIMAL co2_reduced_kg
+        TIMESTAMP created_at
+    }
+
+    CARBON_CREDITS {
+        UUID credit_id PK
+        UUID user_id FK
+        UUID journey_id FK
+        DECIMAL co2_reduced_kg
+        DECIMAL credit_amount
+        VARCHAR status    "PENDING|VERIFIED|LISTED|SOLD|REJECTED"
+        TIMESTAMP created_at
+        TIMESTAMP verified_at
+        TIMESTAMP listed_at
+    }
+
+    CREDIT_LISTINGS {
+        UUID listing_id PK
+        UUID credit_id FK
+        VARCHAR listing_type "FIXED|AUCTION"
+        DECIMAL price
+        DECIMAL min_bid
+        TIMESTAMP auction_end_time
+        VARCHAR status       "ACTIVE|CLOSED|CANCELLED"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    TRANSACTIONS {
+        UUID transaction_id PK
+        UUID credit_id FK
+        UUID listing_id FK
+        UUID buyer_id FK
+        UUID seller_id FK
+        DECIMAL amount
+        VARCHAR status       "PENDING|COMPLETED|CANCELLED|DISPUTED"
+        TIMESTAMP created_at
+        TIMESTAMP completed_at
+    }
+
+    WALLETS {
+        UUID wallet_id PK
+        UUID user_id FK
+        DECIMAL credit_balance
+        DECIMAL cash_balance
+        TIMESTAMP updated_at
+    }
+
+    CERTIFICATES {
+        UUID certificate_id PK
+        UUID transaction_id FK
+        UUID buyer_id FK
+        UUID credit_id FK
+        TIMESTAMP issue_date
+        DECIMAL co2_reduced_kg
+        VARCHAR certificate_code
+    }
+
+    AUDIT_LOGS {
+        UUID audit_id PK
+        UUID credit_id FK
+        UUID verifier_id FK
+        VARCHAR action    "SUBMITTED|VERIFIED|REJECTED"
+        TEXT comments
+        TIMESTAMP created_at
+    }
+
+    DISPUTES {
+        UUID dispute_id PK
+        UUID transaction_id FK
+        UUID raised_by_id FK
+        TEXT reason
+        VARCHAR status    "OPEN|RESOLVED|CLOSED"
+        TEXT resolution
+        TIMESTAMP created_at
+        TIMESTAMP resolved_at
+        UUID resolved_by_id FK
+    }
+
+    PAYMENTS {
+        UUID payment_id PK
+        UUID transaction_id FK
+        UUID payer_id FK
+        UUID payee_id FK
+        DECIMAL amount
+        VARCHAR payment_method
+        VARCHAR payment_status
+        VARCHAR payment_reference
+        TIMESTAMP created_at
+    }
+
+    NOTIFICATIONS {
+        UUID notification_id PK
+        UUID user_id FK
+        VARCHAR notification_type
+        VARCHAR title
+        TEXT message
+        BOOLEAN is_read
+        TIMESTAMP created_at
+        UUID related_entity_id
+        VARCHAR related_entity_type
+    }
+
+    %% Relationships (cardinality)
+    USERS ||--o{ VEHICLES : "owns"
+    USERS ||--o{ JOURNEY_DATA : "records"
+    VEHICLES ||--o{ JOURNEY_DATA : "has"
+    USERS ||--o{ CARBON_CREDITS : "issues"
+    JOURNEY_DATA ||--|| CARBON_CREDITS : "may generate"
+    CARBON_CREDITS ||--o{ CREDIT_LISTINGS : "listed as"
+    CREDIT_LISTINGS ||--o{ TRANSACTIONS : "sold via"
+    USERS ||--o{ TRANSACTIONS : "buys"
+    USERS ||--o{ TRANSACTIONS : "sells"
+    USERS ||--|| WALLETS : "has"
+    TRANSACTIONS ||--o{ PAYMENTS : "has"
+    TRANSACTIONS ||--o{ CERTIFICATES : "may produce"
+    CARBON_CREDITS ||--o{ AUDIT_LOGS : "audited by"
+    TRANSACTIONS ||--o{ DISPUTES : "may have"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+
+
+Relationships
+
+Users → Vehicles : 1:N
+
+Users → Journey Data : 1:N
+
+Users → Carbon Credits : 1:N
+
+Vehicles → Journey Data : 1:N
+
+Journey Data → Carbon Credits : 1:N
+
+Carbon Credits → Credit Listings : 1:N
+
+Credit Listings → Transactions : 1:N
+
+Carbon Credits → Transactions : 1:N
+
+Users → Transactions (Buyer/Seller) : 1:N
+
+Transactions → Certificates : 1:1
+
+Carbon Credits → Certificates : 1:N
+
+Carbon Credits → Audit Logs : 1:N
+
+Transactions → Disputes : 1:N
+
+Users → Disputes (Raised/Resolved) : 1:N
+
+Transactions → Payments : 1:N
+
+Users → Payments (Payer/Payee) : 1:N
+
+Users → Wallets : 1:1
+
+Users → Notifications : 1:N
