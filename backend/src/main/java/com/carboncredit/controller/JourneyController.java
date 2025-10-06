@@ -1,5 +1,6 @@
 package com.carboncredit.controller;
 
+import com.carboncredit.dto.JourneyDataDTO;
 import com.carboncredit.dto.JourneyStatistics;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
@@ -14,10 +15,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/journeys")
+@RequestMapping("/journeys")
 @RequiredArgsConstructor
 public class JourneyController {
 
@@ -28,8 +30,8 @@ public class JourneyController {
      * Create a new EV journey and automatically generate carbon credits
      */
     @PostMapping
-    public ResponseEntity<JourneyData> createJourney(@RequestBody JourneyData journeyData, 
-                                                   Authentication authentication) {
+    public ResponseEntity<JourneyDataDTO> createJourney(@RequestBody JourneyData journeyData, 
+                                                       Authentication authentication) {
         try {
             // Get authenticated user
             User user = userService.findByUsername(authentication.getName())
@@ -45,7 +47,7 @@ public class JourneyController {
                 user.getUsername(), savedJourney.getDistanceKm(), 
                 savedJourney.getEnergyConsumedKwh(), savedJourney.getCo2ReducedKg());
             
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedJourney);
+            return ResponseEntity.status(HttpStatus.CREATED).body(new JourneyDataDTO(savedJourney));
             
         } catch (Exception e) {
             log.error("Error creating journey: {}", e.getMessage());
@@ -57,13 +59,17 @@ public class JourneyController {
      * Get all journeys for the authenticated user
      */
     @GetMapping("/my-journeys")
-    public ResponseEntity<List<JourneyData>> getMyJourneys(Authentication authentication) {
+    public ResponseEntity<List<JourneyDataDTO>> getMyJourneys(Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
             
             List<JourneyData> journeys = journeyDataService.findByUser(user);
-            return ResponseEntity.ok(journeys);
+            List<JourneyDataDTO> journeyDTOs = journeys.stream()
+                .map(JourneyDataDTO::new)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(journeyDTOs);
             
         } catch (Exception e) {
             log.error("Error fetching user journeys: {}", e.getMessage());
@@ -75,8 +81,8 @@ public class JourneyController {
      * Get specific journey by ID (only if user owns it)
      */
     @GetMapping("/{journeyId}")
-    public ResponseEntity<JourneyData> getJourney(@PathVariable UUID journeyId,
-                                                Authentication authentication) {
+    public ResponseEntity<JourneyDataDTO> getJourney(@PathVariable UUID journeyId,
+                                                    Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -91,7 +97,7 @@ public class JourneyController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
-            return ResponseEntity.ok(journey);
+            return ResponseEntity.ok(new JourneyDataDTO(journey));
             
         } catch (Exception e) {
             log.error("Error fetching journey {}: {}", journeyId, e.getMessage());
@@ -121,7 +127,7 @@ public class JourneyController {
      * Admin endpoint: Get all journeys
      */
     @GetMapping("/admin/all")
-    public ResponseEntity<List<JourneyData>> getAllJourneys(Authentication authentication) {
+    public ResponseEntity<List<JourneyDataDTO>> getAllJourneys(Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -132,7 +138,11 @@ public class JourneyController {
             }
             
             List<JourneyData> journeys = journeyDataService.findAll();
-            return ResponseEntity.ok(journeys);
+            List<JourneyDataDTO> journeyDTOs = journeys.stream()
+                .map(JourneyDataDTO::new)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(journeyDTOs);
             
         } catch (Exception e) {
             log.error("Error fetching all journeys: {}", e.getMessage());
@@ -144,9 +154,9 @@ public class JourneyController {
      * Update existing journey (before any credits are verified)
      */
     @PutMapping("/{journeyId}")
-    public ResponseEntity<JourneyData> updateJourney(@PathVariable UUID journeyId,
-                                                   @RequestBody JourneyData updatedJourney,
-                                                   Authentication authentication) {
+    public ResponseEntity<JourneyDataDTO> updateJourney(@PathVariable UUID journeyId,
+                                                       @RequestBody JourneyData updatedJourney,
+                                                       Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -164,7 +174,7 @@ public class JourneyController {
             // Update journey using the service method signature
             JourneyData savedJourney = journeyDataService.updateJourney(journeyId, updatedJourney, user);
             
-            return ResponseEntity.ok(savedJourney);
+            return ResponseEntity.ok(new JourneyDataDTO(savedJourney));
             
         } catch (Exception e) {
             log.error("Error updating journey {}: {}", journeyId, e.getMessage());

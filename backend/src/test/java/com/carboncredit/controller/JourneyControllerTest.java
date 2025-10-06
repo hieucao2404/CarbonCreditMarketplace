@@ -1,5 +1,6 @@
 package com.carboncredit.controller;
 
+import com.carboncredit.dto.JourneyDataDTO;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.service.JourneyDataService;
@@ -58,11 +59,11 @@ class JourneyControllerTest {
         when(journeyDataService.createJourney(any(JourneyData.class))).thenReturn(testJourney);
 
         // When
-        ResponseEntity<JourneyData> response = journeyController.createJourney(testJourney, authentication);
+        ResponseEntity<JourneyDataDTO> response = journeyController.createJourney(testJourney, authentication);
 
         // Then
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        JourneyData responseBody = response.getBody();
+        JourneyDataDTO responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(testJourney.getId(), responseBody.getId());
         verify(journeyDataService).createJourney(any(JourneyData.class));
@@ -75,7 +76,7 @@ class JourneyControllerTest {
         when(userService.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
         // When
-        ResponseEntity<JourneyData> response = journeyController.createJourney(testJourney, authentication);
+        ResponseEntity<JourneyDataDTO> response = journeyController.createJourney(testJourney, authentication);
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -91,11 +92,11 @@ class JourneyControllerTest {
         when(journeyDataService.findById(journeyId)).thenReturn(testJourney);
 
         // When
-        ResponseEntity<JourneyData> response = journeyController.getJourney(journeyId, authentication);
+        ResponseEntity<JourneyDataDTO> response = journeyController.getJourney(journeyId, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        JourneyData responseBody = response.getBody();
+        JourneyDataDTO responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(journeyId, responseBody.getId());
     }
@@ -113,7 +114,7 @@ class JourneyControllerTest {
         when(journeyDataService.findById(journeyId)).thenReturn(testJourney);
 
         // When
-        ResponseEntity<JourneyData> response = journeyController.getJourney(journeyId, authentication);
+        ResponseEntity<JourneyDataDTO> response = journeyController.getJourney(journeyId, authentication);
 
         // Then
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
@@ -128,7 +129,7 @@ class JourneyControllerTest {
         when(journeyDataService.findById(journeyId)).thenReturn(null);
 
         // When
-        ResponseEntity<JourneyData> response = journeyController.getJourney(journeyId, authentication);
+        ResponseEntity<JourneyDataDTO> response = journeyController.getJourney(journeyId, authentication);
 
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());

@@ -16,12 +16,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.carboncredit.dto.DepositRequest;
+import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.dto.WalletResponse;
 import com.carboncredit.entity.Transaction;
 import com.carboncredit.entity.User;
 import com.carboncredit.entity.Wallet;
 import com.carboncredit.dto.WithdrawRequest;
 import com.carboncredit.service.BankingService;
+import com.carboncredit.util.DTOMapper;
 import com.carboncredit.service.TransactionService;
 import com.carboncredit.service.UserService;
 import com.carboncredit.service.WalletService;
@@ -34,7 +36,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/wallets")
+@RequestMapping("/wallets")
 @RequiredArgsConstructor
 @Validated
 public class WalletController {
@@ -168,7 +170,7 @@ public class WalletController {
 
     // Get wallet transaction history - Fixed to use existing TransactionService
     @GetMapping("/transactions")
-    public ResponseEntity<Page<Transaction>> getWalletTransactions(
+    public ResponseEntity<Page<TransactionDTO>> getWalletTransactions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
@@ -178,10 +180,11 @@ public class WalletController {
 
             // Use existing TransactionService to get user's transaction history
             Page<Transaction> transactions = transactionService.getUserTransactions(user, page, size);
+            Page<TransactionDTO> transactionDTOs = DTOMapper.toTransactionDTOPage(transactions);
 
             log.info("Retrieved {} wallet transactions for user: {}", 
                     transactions.getTotalElements(), user.getUsername());
-            return ResponseEntity.ok(transactions);
+            return ResponseEntity.ok(transactionDTOs);
         } catch (Exception e) {
             log.error("Error retrieving wallet transactions: {}", e.getMessage());
             return ResponseEntity.badRequest().build();

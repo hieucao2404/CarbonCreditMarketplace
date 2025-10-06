@@ -47,7 +47,9 @@ class WalletIntegrationTest {
         testUser = new User();
         testUser.setUsername("integration_test_user");
         testUser.setEmail("test@example.com");
+        testUser.setFullName("Integration Test User");
         testUser.setPassword("password123");
+        testUser.setPasswordHash("hashed_password123"); // Required for database constraints
         testUser.setRole(User.UserRole.BUYER);
         testUser = userRepository.save(testUser);
     }
@@ -161,7 +163,9 @@ class WalletIntegrationTest {
         User newUser = new User();
         newUser.setUsername("new_user");
         newUser.setEmail("new@example.com");
+        newUser.setFullName("New Test User");
         newUser.setPassword("password456");
+        newUser.setPasswordHash("hashed_password456"); // Required for database constraints
         newUser.setRole(User.UserRole.EV_OWNER);
         newUser = userRepository.save(newUser);
         

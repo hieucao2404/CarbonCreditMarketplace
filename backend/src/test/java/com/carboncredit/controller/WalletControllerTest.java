@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import com.carboncredit.dto.DepositRequest;
+import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.dto.WalletResponse;
 import com.carboncredit.dto.WithdrawRequest;
 import com.carboncredit.entity.Transaction;
@@ -319,7 +320,7 @@ class WalletControllerTest {
         when(transactionService.getUserTransactions(testUser, 0, 10)).thenReturn(mockPage);
         
         // Act
-        ResponseEntity<Page<Transaction>> response = walletController.getWalletTransactions(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = walletController.getWalletTransactions(0, 10, authentication);
         
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());

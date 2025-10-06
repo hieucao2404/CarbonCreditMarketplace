@@ -1,7 +1,9 @@
 package com.carboncredit.controller;
 
+import com.carboncredit.dto.DisputeDTO;
 import com.carboncredit.dto.DisputeRequest;
 import com.carboncredit.dto.PurchaseRequest;
+import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.CreditListing;
 import com.carboncredit.entity.Dispute;
@@ -99,11 +101,11 @@ class TransactionControllerTest {
         when(transactionService.initiatePurchase(testListing.getId(), buyer)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.initiateTransaction(purchaseRequest, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.initiateTransaction(purchaseRequest, authentication);
 
         // Then
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        Transaction responseBody = response.getBody();
+        TransactionDTO responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(testTransaction.getId(), responseBody.getId());
         verify(transactionService).initiatePurchase(testListing.getId(), buyer);
@@ -116,7 +118,7 @@ class TransactionControllerTest {
         when(userService.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
         // When
-        ResponseEntity<Transaction> response = transactionController.initiateTransaction(purchaseRequest, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.initiateTransaction(purchaseRequest, authentication);
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
@@ -133,7 +135,7 @@ class TransactionControllerTest {
         when(transactionService.completeTransaction(testTransaction)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.completeTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.completeTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -154,7 +156,7 @@ class TransactionControllerTest {
         when(transactionService.findTransactionById(transactionId)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.completeTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.completeTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
@@ -170,7 +172,7 @@ class TransactionControllerTest {
         when(transactionService.findTransactionById(transactionId)).thenReturn(null);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.completeTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.completeTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
@@ -185,7 +187,7 @@ class TransactionControllerTest {
         when(transactionService.cancelTransaction(transactionId, buyer)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.cancelTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.cancelTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -201,7 +203,7 @@ class TransactionControllerTest {
         when(transactionService.findTransactionById(transactionId)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.getTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.getTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -222,7 +224,7 @@ class TransactionControllerTest {
         when(transactionService.findTransactionById(transactionId)).thenReturn(testTransaction);
 
         // When
-        ResponseEntity<Transaction> response = transactionController.getTransaction(transactionId, authentication);
+        ResponseEntity<TransactionDTO> response = transactionController.getTransaction(transactionId, authentication);
 
         // Then
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
@@ -237,11 +239,11 @@ class TransactionControllerTest {
         when(transactionService.getUserTransactions(buyer, 0, 10)).thenReturn(transactionsPage);
 
         // When
-        ResponseEntity<Page<Transaction>> response = transactionController.getMyTransactions(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = transactionController.getMyTransactions(0, 10, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Page<Transaction> responseBody = response.getBody();
+        Page<TransactionDTO> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(1, responseBody.getTotalElements());
     }
@@ -255,11 +257,11 @@ class TransactionControllerTest {
         when(transactionService.getPurchaseHistory(buyer, 0, 10)).thenReturn(purchasesPage);
 
         // When
-        ResponseEntity<Page<Transaction>> response = transactionController.getPurchaseHistory(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = transactionController.getPurchaseHistory(0, 10, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Page<Transaction> responseBody = response.getBody();
+        Page<TransactionDTO> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(1, responseBody.getTotalElements());
     }
@@ -273,11 +275,11 @@ class TransactionControllerTest {
         when(transactionService.getSalesHistory(seller, 0, 10)).thenReturn(salesPage);
 
         // When
-        ResponseEntity<Page<Transaction>> response = transactionController.getSalesHistory(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = transactionController.getSalesHistory(0, 10, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Page<Transaction> responseBody = response.getBody();
+        Page<TransactionDTO> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(1, responseBody.getTotalElements());
     }
@@ -295,11 +297,11 @@ class TransactionControllerTest {
         when(transactionService.createDispute(transactionId, buyer, "Item not as described")).thenReturn(dispute);
 
         // When
-        ResponseEntity<Dispute> response = transactionController.createDispute(transactionId, disputeRequest, authentication);
+        ResponseEntity<DisputeDTO> response = transactionController.createDispute(transactionId, disputeRequest, authentication);
 
         // Then
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        Dispute responseBody = response.getBody();
+        DisputeDTO responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(dispute.getId(), responseBody.getId());
         verify(transactionService).createDispute(transactionId, buyer, "Item not as described");
@@ -314,11 +316,11 @@ class TransactionControllerTest {
         when(transactionService.getDisputedTransactions(0, 10)).thenReturn(disputedPage);
 
         // When
-        ResponseEntity<Page<Transaction>> response = transactionController.getDisputedTransactions(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = transactionController.getDisputedTransactions(0, 10, authentication);
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        Page<Transaction> responseBody = response.getBody();
+        Page<TransactionDTO> responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals(1, responseBody.getTotalElements());
     }
@@ -330,7 +332,7 @@ class TransactionControllerTest {
         when(userService.findByUsername("buyer")).thenReturn(Optional.of(buyer));
 
         // When
-        ResponseEntity<Page<Transaction>> response = transactionController.getDisputedTransactions(0, 10, authentication);
+        ResponseEntity<Page<TransactionDTO>> response = transactionController.getDisputedTransactions(0, 10, authentication);
 
         // Then
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());

@@ -19,9 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import com.carboncredit.dto.DisputeDTO;
 import com.carboncredit.dto.DisputeRequest;
+import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.dto.TransactionResponse;
 import com.carboncredit.service.TransactionService;
+import com.carboncredit.util.DTOMapper;
 import com.carboncredit.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -35,7 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/transactions")
+@RequestMapping("/transactions")
 @RequiredArgsConstructor
 public class TransactionController {
     private final TransactionService transactionService;
@@ -43,7 +46,7 @@ public class TransactionController {
 
     // initiate a purchase of carbon credits from listing
     @PostMapping("/purchase")
-    public ResponseEntity<Transaction> initiateTransaction(@RequestBody PurchaseRequest request,
+    public ResponseEntity<TransactionDTO> initiateTransaction(@RequestBody PurchaseRequest request,
             Authentication authentication) {
         try {
             User buyer = userService.findByUsername(authentication.getName())
@@ -52,8 +55,9 @@ public class TransactionController {
             log.info("User {} initiating purchase of listing {}", buyer.getUsername(), request.getListingId());
 
             Transaction transaction = transactionService.initiatePurchase(request.getListingId(), buyer);
+            TransactionDTO transactionDTO = DTOMapper.toTransactionDTO(transaction);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
+            return ResponseEntity.status(HttpStatus.CREATED).body(transactionDTO);
         } catch (Exception e) {
             log.error("Error initiating purchase: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -63,7 +67,7 @@ public class TransactionController {
 
     // Complete a transaction (process payment and finalize
     @PostMapping("/{transactionId}/complete")
-    public ResponseEntity<Transaction> completeTransaction(@PathVariable UUID transactionId,
+    public ResponseEntity<TransactionDTO> completeTransaction(@PathVariable UUID transactionId,
             Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
@@ -83,10 +87,11 @@ public class TransactionController {
             // Process payment and complete
             transactionService.processPayment(transaction);
             Transaction completedTransaction = transactionService.completeTransaction(transaction);
+            TransactionDTO transactionDTO = DTOMapper.toTransactionDTO(completedTransaction);
 
             log.info("Transaction {} completed successfully", transactionId);
 
-            return ResponseEntity.ok(completedTransaction);
+            return ResponseEntity.ok(transactionDTO);
         } catch (Exception e) {
             log.error("Error completing transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -95,17 +100,18 @@ public class TransactionController {
 
     // cancel a transaction (before completion
     @PostMapping("/{transactionId}/cancel")
-    public ResponseEntity<Transaction> cancelTransaction(@PathVariable UUID transactionId,
+    public ResponseEntity<TransactionDTO> cancelTransaction(@PathVariable UUID transactionId,
             Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Transaction cancelledTransaction = transactionService.cancelTransaction(transactionId, user);
+            TransactionDTO transactionDTO = DTOMapper.toTransactionDTO(cancelledTransaction);
 
             log.info("Transaction {} cancelled by user {}", transactionId, user.getUsername());
 
-            return ResponseEntity.ok(cancelledTransaction);
+            return ResponseEntity.ok(transactionDTO);
         } catch (Exception e) {
             log.error("Error cancelling transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -114,7 +120,7 @@ public class TransactionController {
 
     // get specific transaction by Id
     @GetMapping("/{transactionId}")
-    public ResponseEntity<Transaction> getTransaction(@PathVariable UUID transactionId, Authentication authentication) {
+    public ResponseEntity<TransactionDTO> getTransaction(@PathVariable UUID transactionId, Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -133,7 +139,8 @@ public class TransactionController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
-            return ResponseEntity.ok(transaction);
+            TransactionDTO transactionDTO = DTOMapper.toTransactionDTO(transaction);
+            return ResponseEntity.ok(transactionDTO);
         } catch (Exception e) {
             log.error("Error fetching transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -142,7 +149,7 @@ public class TransactionController {
 
     // get user's transaction history (both purchases and sales)
     @GetMapping("/my-transactions")
-    public ResponseEntity<Page<Transaction>> getMyTransactions(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<TransactionDTO>> getMyTransactions(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
 
@@ -151,8 +158,9 @@ public class TransactionController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Page<Transaction> transactions = transactionService.getUserTransactions(user, page, size);
+            Page<TransactionDTO> transactionDTOs = DTOMapper.toTransactionDTOPage(transactions);
 
-            return ResponseEntity.ok(transactions);
+            return ResponseEntity.ok(transactionDTOs);
         } catch (Exception e) {
             log.error("Error fetching user transaction: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -161,15 +169,16 @@ public class TransactionController {
 
     // get user's purchase history
     @GetMapping("/purchases")
-    public ResponseEntity<Page<Transaction>> getPurchaseHistory(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<TransactionDTO>> getPurchaseHistory(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size, Authentication authentication) {
         try {
             User buyer = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Page<Transaction> purchases = transactionService.getPurchaseHistory(buyer, page, size);
+            Page<TransactionDTO> purchaseDTOs = DTOMapper.toTransactionDTOPage(purchases);
 
-            return ResponseEntity.ok(purchases);
+            return ResponseEntity.ok(purchaseDTOs);
         } catch (Exception e) {
             log.error("Error fetching purchase history: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -178,15 +187,16 @@ public class TransactionController {
 
     // get user's sales history
     @GetMapping("/sales")
-    public ResponseEntity<Page<Transaction>> getSalesHistory(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<TransactionDTO>> getSalesHistory(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size, Authentication authentication) {
         try {
             User seller = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Page<Transaction> sales = transactionService.getSalesHistory(seller, page, size);
+            Page<TransactionDTO> salesDTOs = DTOMapper.toTransactionDTOPage(sales);
 
-            return ResponseEntity.ok(sales);
+            return ResponseEntity.ok(salesDTOs);
         } catch (Exception e) {
             log.error("Error fetching sales history: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -195,17 +205,18 @@ public class TransactionController {
 
     // create a dispute for transaction
     @PostMapping("/{transactionId}/dispute")
-    public ResponseEntity<Dispute> createDispute(@PathVariable UUID transactionId, @RequestBody DisputeRequest request,
+    public ResponseEntity<DisputeDTO> createDispute(@PathVariable UUID transactionId, @RequestBody DisputeRequest request,
             Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             Dispute dispute = transactionService.createDispute(transactionId, user, request.getReason());
+            DisputeDTO disputeDTO = DTOMapper.toDisputeDTO(dispute);
 
             log.info("Dispute created for transaction {} by user {}", transactionId, user.getUsername());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(dispute);
+            return ResponseEntity.status(HttpStatus.CREATED).body(disputeDTO);
         } catch (Exception e) {
             log.error("Error creating dispute for transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -214,7 +225,7 @@ public class TransactionController {
 
     // Admin: Get all disputed transactions
     @GetMapping("/admin/disputed")
-    public ResponseEntity<Page<Transaction>> getDisputedTransactions(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<Page<TransactionDTO>> getDisputedTransactions(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size, Authentication authentication) {
         try {
             User user = userService.findByUsername(authentication.getName())
@@ -226,7 +237,8 @@ public class TransactionController {
             }
 
             Page<Transaction> transactions = transactionService.getDisputedTransactions(page, size);
-            return ResponseEntity.ok(transactions);
+            Page<TransactionDTO> transactionDTOs = DTOMapper.toTransactionDTOPage(transactions);
+            return ResponseEntity.ok(transactionDTOs);
         } catch (Exception e) {
             log.error("Error fetching disputed transactions: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
