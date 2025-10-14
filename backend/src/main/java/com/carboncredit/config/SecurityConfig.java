@@ -1,6 +1,5 @@
 package com.carboncredit.config;
 
-import com.carboncredit.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,28 +7,29 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-
-    private final CustomUserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        log.info("🔧 Configuring Security Filter Chain");
+        
         http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/users/**").permitAll()
-                        .requestMatchers("/carbon-credits/**").permitAll()
-                        .anyRequest().authenticated())
-                .httpBasic(basic -> basic.realmName("Carbon Credit Marketplace"))
-                .userDetailsService(userDetailsService);
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/users/register").permitAll()
+                .requestMatchers("/api/users/debug/**").permitAll()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .anyRequest().authenticated())
+            .httpBasic(basic -> basic.realmName("Carbon Credit Marketplace"));
 
+        log.info("✅ Security configured - Spring Boot will auto-wire CustomUserDetailsService");
         return http.build();
     }
 }

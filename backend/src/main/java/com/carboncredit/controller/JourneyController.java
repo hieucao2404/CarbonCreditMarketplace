@@ -29,7 +29,7 @@ public class JourneyController {
     /**
      * Create a new EV journey and automatically generate carbon credits
      */
-    @PostMapping
+    @PostMapping()
     public ResponseEntity<JourneyDataDTO> createJourney(@RequestBody JourneyData journeyData, 
                                                        Authentication authentication) {
         try {

@@ -32,8 +32,8 @@ public class User {
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
-    
-    @Column(name = "password", length = 255)
+
+    @Transient // Don't save to database
     private String password;
 
     @Enumerated(EnumType.STRING)

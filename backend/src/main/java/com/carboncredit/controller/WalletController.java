@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Slf4j
 @RestController
-@RequestMapping("/wallets")
+@RequestMapping("/api/wallets")
 @RequiredArgsConstructor
 @Validated
 public class WalletController {

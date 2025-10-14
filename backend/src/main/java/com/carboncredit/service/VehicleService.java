@@ -13,18 +13,25 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class VehicleService {
     private final VehicleRepository vehicleRepository;
+    private final UserService userService;
 
     public Vehicle createVehicle(Vehicle vehicle) {
         if (vehicleRepository.existsByVin(vehicle.getVin())) {
             throw new IllegalArgumentException("Vehicle with VIN already exists: " + vehicle.getVin());
         }
         
-        // Validate required fields
+        UUID userId = vehicle.getUser().getId();
+        User user = userService.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        if(user.getRole() != User.UserRole.EV_OWNER) {
+            throw new IllegalArgumentException("Associated EVOwner only");
+        }
+        // Validate required field
         if (vehicle.getUser() == null) {
             throw new IllegalArgumentException("Vehicle must be associated with a user");
         }

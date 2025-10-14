@@ -39,13 +39,26 @@ public class CustomUserDetailsService implements UserDetailsService {
             return new UsernameNotFoundException("User not found: " + username);
         });
 
-        log.debug("Found user: {} with role: {}", user.getUsername(), user.getRole());
-
+        log.info("✅ [AUTH] User found: {}", user.getUsername());
+        log.info("🔑 [AUTH] Password hash exists: {}", user.getPasswordHash() != null);
+        log.info("🔑 [AUTH] Password hash length: {}",
+                user.getPasswordHash() != null ? user.getPasswordHash().length() : 0);
+        log.info("🔑 [AUTH] Password hash preview: {}",
+                user.getPasswordHash() != null ? user.getPasswordHash().substring(0, 20) : "null");
+        String passwordHash = user.getPasswordHash();
+         log.info("🔧 [AUTH] About to create UserDetails with password: '{}'", passwordHash != null ? passwordHash.substring(0, 20) + "..." : "NULL");
+    
         // Step 2: Convert YOUR User entity to Spring Security UserDetails
-        return org.springframework.security.core.userdetails.User.builder().username(user.getUsername())
-                .password(getValidPassword(user))
-                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-                .accountExpired(false).accountLocked(false).credentialsExpired(false).disabled(false).build();
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                user.getUsername(),
+                passwordHash, // ⭐ Explicitly use the variable
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
+
+        log.info("✅ [AUTH] UserDetails created, authorities: {}", userDetails.getAuthorities());
+        log.info("🔧 [AUTH] UserDetails password from object: '{}'",
+                userDetails.getPassword() != null ? userDetails.getPassword().substring(0, 20) + "..." : "NULL");
+
+        return userDetails;
     }
 
     // handle password
