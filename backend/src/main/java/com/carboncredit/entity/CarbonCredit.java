@@ -51,6 +51,11 @@ public class CarbonCredit {
 
     @Column(name = "listed_at")
     private LocalDateTime listedAt;
+    
+     // ⭐ ADD CVA VERIFIER FIELD
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verified_by_id")
+    private User verifiedBy;
 
     @OneToMany(mappedBy = "credit", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CreditListing> listings;
@@ -58,7 +63,11 @@ public class CarbonCredit {
     @OneToMany(mappedBy = "credit", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<AuditLog> auditLogs;
 
-    public enum CreditStatus {
-        PENDING, VERIFIED, LISTED, SOLD, REJECTED
+   public enum CreditStatus {
+        PENDING,   // Initial state (replaces UNVERIFIED)
+        VERIFIED,  // CVA approved
+        LISTED,    // Available for sale
+        SOLD,      // Purchased
+        REJECTED   // CVA rejected
     }
 }

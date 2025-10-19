@@ -1,0 +1,427 @@
+{
+  "info": {
+    "name": "Carbon Credit Marketplace - Journey & CVA API",
+    "description": "Complete testing collection for Journey creation and CVA verification workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "evowner_username",
+      "value": "evowner1",
+      "type": "string"
+    },
+    {
+      "key": "evowner_password",
+      "value": "EV123",
+      "type": "string"
+    },
+    {
+      "key": "cva_username",
+      "value": "cva001",
+      "type": "string"
+    },
+    {
+      "key": "cva_password",
+      "value": "CVA123",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin001",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123",
+      "type": "string"
+    },
+    {
+      "key": "journey_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vehicle_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup - Register Users",
+      "item": [
+        {
+          "name": "Register EV Owner",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"evowner1\",\n  \"email\": \"evowner1@example.com\",\n  \"password\": \"EV123\",\n  \"fullName\": \"EV Owner One\",\n  \"phone\": \"5555555555\",\n  \"role\": \"EV_OWNER\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register CVA",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"cva001\",\n  \"email\": \"cva001@example.com\",\n  \"password\": \"CVA123\",\n  \"fullName\": \"CVA Verifier One\",\n  \"phone\": \"6666666666\",\n  \"role\": \"CVA\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "register"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Journey - EV Owner Operations",
+      "item": [
+        {
+          "name": "1.1 Create Journey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('journey_id', jsonData.data.id);",
+                  "    console.log('Journey ID saved: ' + jsonData.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicle\": {\n    \"id\": \"{{vehicle_id}}\"\n  },\n  \"distanceKm\": 150.5,\n  \"energyConsumedKwh\": 28.3,\n  \"startTime\": \"2025-10-16T08:00:00\",\n  \"endTime\": \"2025-10-16T10:30:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/journeys",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{evowner_username}}"},
+                {"key": "password", "value": "{{evowner_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.2 Get My Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/my-journeys",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "my-journeys"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{evowner_username}}"},
+                {"key": "password", "value": "{{evowner_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Get Journey by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/{{journey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "{{journey_id}}"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{evowner_username}}"},
+                {"key": "password", "value": "{{evowner_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.4 Update Journey",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"distanceKm\": 155.0,\n  \"energyConsumedKwh\": 29.0,\n  \"startTime\": \"2025-10-16T08:00:00\",\n  \"endTime\": \"2025-10-16T10:45:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/journeys/{{journey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "{{journey_id}}"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{evowner_username}}"},
+                {"key": "password", "value": "{{evowner_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.5 Get Journey Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "statistics"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{evowner_username}}"},
+                {"key": "password", "value": "{{evowner_password}}"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. CVA - Verification Operations",
+      "item": [
+        {
+          "name": "2.1 Get Pending Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/pending-journeys",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "pending-journeys"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 Get Journey for Review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/journey/{{journey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "journey", "{{journey_id}}"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.3 Approve Journey",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/journey/{{journey_id}}/approve?notes=Journey data validated. Energy consumption matches distance.",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "journey", "{{journey_id}}", "approve"],
+              "query": [
+                {
+                  "key": "notes",
+                  "value": "Journey data validated. Energy consumption matches distance."
+                }
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 Reject Journey",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/journey/{{journey_id}}/reject?reason=Energy consumption too low for reported distance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "journey", "{{journey_id}}", "reject"],
+              "query": [
+                {
+                  "key": "reason",
+                  "value": "Energy consumption too low for reported distance"
+                }
+              ]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.5 Get CVA Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "statistics"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.6 Get My Verifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cva/my-verifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cva", "my-verifications"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{cva_username}}"},
+                {"key": "password", "value": "{{cva_password}}"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Operations",
+      "item": [
+        {
+          "name": "3.1 Get All Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/admin/all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "admin", "all"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{admin_username}}"},
+                {"key": "password", "value": "{{admin_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Get Pending Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/admin/by-status/PENDING_VERIFICATION",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "admin", "by-status", "PENDING_VERIFICATION"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{admin_username}}"},
+                {"key": "password", "value": "{{admin_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 Get Verified Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/admin/by-status/VERIFIED",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "admin", "by-status", "VERIFIED"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{admin_username}}"},
+                {"key": "password", "value": "{{admin_password}}"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.4 Get Rejected Journeys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/journeys/admin/by-status/REJECTED",
+              "host": ["{{base_url}}"],
+              "path": ["api", "journeys", "admin", "by-status", "REJECTED"]
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{admin_username}}"},
+                {"key": "password", "value": "{{admin_password}}"}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

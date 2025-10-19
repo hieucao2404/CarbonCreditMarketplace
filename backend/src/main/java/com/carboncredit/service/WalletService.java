@@ -64,4 +64,22 @@ public class WalletService {
         wallet.setCashBalance(wallet.getCashBalance().add(amount));
         return walletRepository.save(wallet);
     }
+
+    /** Get credit balance for a user */
+    @Transactional(readOnly = true)
+    public BigDecimal getCreditBalance(UUID userId) {
+        Wallet wallet = findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
+        return wallet.getCreditBalance();
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getCashBalance(UUID userId) {
+        Wallet wallet = findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
+        return wallet.getCashBalance();
+    }
+
+    
+
 }

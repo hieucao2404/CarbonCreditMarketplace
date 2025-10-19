@@ -53,6 +53,13 @@ CREATE TABLE journey_data (
     co2_reduced_kg DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE journey_data 
+ALTER COLUMN verification_status SET DEFAULT 'PENDING_VERIFICATION';
+
+SELECT column_name, column_default 
+FROM information_schema.columns 
+WHERE table_name = 'journey_data' 
+AND column_name = 'verification_status';
 
 -- Carbon Credits table
 CREATE TABLE carbon_credits (
@@ -209,3 +216,58 @@ CREATE TABLE notifications (
 );
 
 ALTER TABLE notifications ADD COLUMN related_entity_id UUID, ADD COLUMN related_entity_type VARCHAR(50);
+
+-- ⭐ ADD CVA VERIFICATION COLUMNS TO journey_data
+ALTER TABLE journey_data 
+ADD COLUMN verification_status VARCHAR(30) DEFAULT 'PENDING_VERIFICATION' 
+    CHECK (verification_status IN ('PENDING_VERIFICATION', 'UNDER_REVIEW', 'VERIFIED', 'REJECTED', 'REQUIRES_MORE_INFO')),
+ADD COLUMN verified_by_id UUID REFERENCES users(user_id),
+ADD COLUMN verification_date TIMESTAMP,
+ADD COLUMN verification_notes TEXT,
+ADD COLUMN rejection_reason VARCHAR(500);
+
+-- ⭐ ADD CVA VERIFIER TO carbon_credits
+ALTER TABLE carbon_credits 
+ADD COLUMN verified_by_id UUID REFERENCES users(user_id);
+
+-- ⭐ CREATE INDEX FOR PERFORMANCE
+CREATE INDEX idx_journey_verification_status ON journey_data(verification_status);
+CREATE INDEX idx_journey_verified_by ON journey_data(verified_by_id);
+CREATE INDEX idx_credit_verified_by ON carbon_credits(verified_by_id);
+
+
+-- Create vehicle for evowner2
+-- Replace {evowner2-user-id} with the actual UUID from query above
+INSERT INTO vehicles (vehicle_id, user_id, vin, model, registration_date, created_at)
+VALUES (
+    '77777777-7777-7777-7777-777777777777',  -- Fixed vehicle_id for testing
+    '{evowner2-user-id}',  -- ← PASTE evowner2's user_id HERE
+    'TESLA345678901234',
+    'Tesla Model 3',
+    '2023-01-15',
+    CURRENT_TIMESTAMP
+);
+
+-- Verify vehicle was created
+SELECT v.vehicle_id, v.vin, v.model, u.username 
+FROM vehicles v
+JOIN users u ON v.user_id = u.user_id
+WHERE u.username = 'evowner1';
+
+-- Create vehicle for evowner2
+-- Replace {evowner2-user-id} with the actual UUID from query above
+INSERT INTO vehicles (vehicle_id, user_id, vin, model, registration_date, created_at)
+VALUES (
+    '77777777-7777-7777-7777-777777777777',  -- Fixed vehicle_id for testing
+    '3c865a88-b10e-4b51-9965-0afc0717ee66',  -- ← PASTE evowner2's user_id HERE
+    'TESLA345678901234',
+    'Tesla Model 3',
+    '2023-01-15',
+    CURRENT_TIMESTAMP
+);
+
+-- Verify vehicle was created
+SELECT v.vehicle_id, v.vin, v.model, u.username 
+FROM vehicles v
+JOIN users u ON v.user_id = u.user_id
+WHERE u.username = 'evowner2';

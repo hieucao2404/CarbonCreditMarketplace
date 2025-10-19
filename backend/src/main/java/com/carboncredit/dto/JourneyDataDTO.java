@@ -26,7 +26,15 @@ public class JourneyDataDTO {
     private boolean hasCarbonCredit;
     private UUID carbonCreditId;
 
+    // ⭐ ADD THESE CVA VERIFICATION FIELDS ⭐
+    private String verificationStatus; // NEW!
+    private UUID verifiedById; // NEW!
+    private String verifiedByUsername; // NEW!
+    private LocalDateTime verificationDate; // NEW!
+    private String verificationNotes; // NEW!
+    private String rejectionReason; // NEW!
     // Constructor from JourneyData entity
+
     public JourneyDataDTO(JourneyData journey) {
         this.id = journey.getId();
         this.user = journey.getUser() != null ? new UserDTO(journey.getUser()) : null;
@@ -39,5 +47,22 @@ public class JourneyDataDTO {
         this.createdAt = journey.getCreatedAt();
         this.hasCarbonCredit = journey.getCarbonCredit() != null;
         this.carbonCreditId = journey.getCarbonCredit() != null ? journey.getCarbonCredit().getId() : null;
+        // ⭐⭐⭐ MAP CVA VERIFICATION FIELDS (THIS WAS MISSING!) ⭐⭐⭐
+        this.verificationStatus = journey.getVerificationStatus() != null
+                ? journey.getVerificationStatus().name()
+                : null;
+
+        this.verifiedById = journey.getVerifiedBy() != null
+                ? journey.getVerifiedBy().getId()
+                : null;
+
+        this.verifiedByUsername = journey.getVerifiedBy() != null
+                ? journey.getVerifiedBy().getUsername()
+                : null;
+
+        this.verificationDate = journey.getVerificationDate();
+        this.verificationNotes = journey.getVerificationNotes();
+        this.rejectionReason = journey.getRejectionReason();
     }
+
 }

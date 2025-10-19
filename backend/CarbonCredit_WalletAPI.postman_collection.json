@@ -1,0 +1,402 @@
+{
+  "info": {
+    "name": "Carbon Credit Marketplace - Wallet API",
+    "description": "Complete wallet management API testing collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "buyer_username",
+      "value": "buyer001",
+      "type": "string"
+    },
+    {
+      "key": "buyer_password",
+      "value": "Buyer123",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin001",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Get My Wallet",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/my-wallet",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "my-wallet"]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Check Balance - Insufficient",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/balance-check?amount=1000&balanceType=CASH",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "balance-check"],
+          "query": [
+            {
+              "key": "amount",
+              "value": "1000"
+            },
+            {
+              "key": "balanceType",
+              "value": "CASH"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Deposit Funds - 5000",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 5000.00,\n  \"paymentMethodId\": \"card_visa_1234\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit"]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Check Balance - Sufficient",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/balance-check?amount=1000&balanceType=CASH",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "balance-check"],
+          "query": [
+            {
+              "key": "amount",
+              "value": "1000"
+            },
+            {
+              "key": "balanceType",
+              "value": "CASH"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Withdraw Funds - 1000",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 1000.00,\n  \"bankAccountInfo\": \"Bank of America - 1234567890\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/withdraw",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "withdraw"]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Withdraw Too Much - Should Fail",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 10000.00,\n  \"bankAccountInfo\": \"Bank of America - 1234567890\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/withdraw",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "withdraw"]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Get Wallet Transactions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/transactions?page=0&size=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "transactions"],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Admin - Get User Wallet",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/admin/user/{{user_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "admin", "user", "{{user_id}}"]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "9. Admin - Update User Balance",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/admin/user/{{user_id}}/balance?creditAmount=100&cashAmount=500&reason=Bonus",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "admin", "user", "{{user_id}}", "balance"],
+          "query": [
+            {
+              "key": "creditAmount",
+              "value": "100"
+            },
+            {
+              "key": "cashAmount",
+              "value": "500"
+            },
+            {
+              "key": "reason",
+              "value": "Bonus"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10. Check Credit Balance",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/balance-check?amount=50&balanceType=CREDIT",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "balance-check"],
+          "query": [
+            {
+              "key": "amount",
+              "value": "50"
+            },
+            {
+              "key": "balanceType",
+              "value": "CREDIT"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

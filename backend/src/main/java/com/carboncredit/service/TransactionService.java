@@ -115,8 +115,8 @@ public class TransactionService {
         }
 
         // Log audit trail
-        auditService.logTransactionInitiated(savedTransaction.getId().toString(),
-                buyer.getId().toString(), seller.getId().toString(), savedTransaction.getAmount().toString());
+        // auditService.logTransactionInitiated(savedTransaction.getId().toString(),
+        //         buyer.getId().toString(), seller.getId().toString(), savedTransaction.getAmount().toString());
 
         log.info("Transaction {} initiated successfully", savedTransaction.getId());
         return savedTransaction;

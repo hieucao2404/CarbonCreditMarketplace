@@ -1,58 +1,55 @@
 package com.carboncredit.service;
 
 import java.math.BigDecimal;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
 import com.carboncredit.entity.AuditLog;
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.User;
 import com.carboncredit.repository.AuditLogRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AuditService {
+
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
     private final AuditLogRepository auditLogRepository;
 
-    public void logTransactionInitiated(String transactionId, String buyerId, String sellerId) {
-        log.info("AUDIT: Transaction initiated - ID: {}, Buyer: {}, Seller: {}", transactionId, buyerId, sellerId);
+    // ======================== Carbon Credit audit methods ===========
+    /**
+     * Log when a journey is submitted for verification
+     * Called by JourneyDataService when a new journey is created
+     */
+    public void logSubmission(CarbonCredit credit, User submitter) {
+        AuditLog entry = new AuditLog();
+        entry.setCredit(credit);
+        entry.setVerifier(submitter);
+        entry.setAction(AuditLog.AuditAction.SUBMITTED);
+
+        entry.setComments("Journeys submitted for CVA verifications");
+
+        auditLogRepository.save(entry);
+
+        log.info("AUDIT: Credit {} SUBMITTED by {} for verification", credit.getId(),
+        
+        submitter.getUsername());
     }
 
-    public void logTransactionInitiated(String transactionId, String buyerId, String sellerId, String amount) {
-        log.info("AUDIT: Transaction initiated - ID: {}, Buyer: {}, Seller: {}, Amount: {}", 
-            transactionId, buyerId, sellerId, amount);
-    }
-
-    public void logTransactionCompleted(String transactionId, String buyerId, String sellerId) {
-        log.info("AUDIT: Transaction completed - ID: {}, Buyer: {}, Seller: {}", 
-            transactionId, buyerId, sellerId);
-    }
-
-    public void logTransactionFailed(String transactionId, String reason) {
-        log.info("AUDIT: Transaction failed - ID: {}, Reason: {}", transactionId, reason);
-    }
-
-    public void logDisputeCreated(String disputeId, String transactionId) {
-        log.info("AUDIT: Dispute created - ID: {}, Transaction: {}", disputeId, transactionId);
-    }
-
-    public void logDisputeResolved(String disputeId, String resolution) {
-        log.info("AUDIT: Dispute resolved - ID: {}, Resolution: {}", disputeId, resolution);
-    }
-
-    // Persist verification audit entry
-    public void logVerification(CarbonCredit credit, User verifier, BigDecimal beforeAmount, BigDecimal afterAmount, String comments) {
-        //Build comments/metadata string(you can expand to structure fields later)
+    /**
+     * Log when a CVA verifies and approve a journey
+     * Called by CVAService when approving a journey
+     * 
+     */
+    public void logVerification(CarbonCredit credit, User verifier, BigDecimal beforeAmount, BigDecimal afterAmount, String comments){
         String msg = (comments == null ? "" : comments);
-        msg = msg + String.format("| creditBefore=%s, creditAfter=%s", beforeAmount, afterAmount);
+        msg = msg + String.format(" | Wallet: before = %s, after=%s", beforeAmount, afterAmount);
 
-        //Persisist AuditLog entity
         AuditLog entry = new AuditLog();
         entry.setCredit(credit);
         entry.setVerifier(verifier);
@@ -61,20 +58,59 @@ public class AuditService {
 
         auditLogRepository.save(entry);
 
-        //logging for convenience
-        log.info("AUDIT: Credit {} VERIFIED by {} (before={}, after={}) - comments: {}", credit.getId(), verifier.getUsername(), beforeAmount, afterAmount, comments);
-
+        log.info("AUDIT: Credit {} VERIFIED by {} (wallet: {} -> {}) - {}", credit.getId(), verifier.getUsername(), beforeAmount, afterAmount);
     }
 
-    // persist rejection audit entry
+    /**
+     * Log when a CVA rejects a journey
+     * Called by CVA Service when rejecting a journey
+     */
     public void logRejection(CarbonCredit credit, User verifier, String comments) {
-        AuditLog entry = new AuditLog();
+    AuditLog entry = new AuditLog();
         entry.setCredit(credit);
         entry.setVerifier(verifier);
         entry.setAction(AuditLog.AuditAction.REJECTED);
         entry.setComments(comments);
-
+        
         auditLogRepository.save(entry);
-        log.info("AUDIT: Credit {} REJECTED by {} - comments: {}", credit.getId(), verifier.getUsername(), comments);
+        
+        log.warn("AUDIT: Credit {} REJECTED by {} - Reason: {}", 
+                credit.getId(), verifier.getUsername(), comments);
     }
+
+    // ============ TRANSACITON AUDIT METHOD FOR FUTER USE =========
+
+    /* Log transaction initiation (marketplace trading) */
+    public void logTransactionInitiated(String transactionId, String buyerId, String sellerId) {
+        log.info("AUDIT: Transaction {} initiated -  Buyer: {}, Seller: {}", transactionId, buyerId, sellerId);
+    }
+
+    /** 
+     * Log transaction completion
+     */
+    public void logTransactionCompleted(String transactionId, String buyerId, String sellerId) {
+        log.info("Audit: Transaction {} completed - Buyer: {}, seller: {}", transactionId, buyerId, sellerId);
+    }
+
+    /**
+     * Log transaction failure
+     */
+    public void logTransactionFailed(String transactionId, String reason) {
+        log.warn("AUDIT: Transaction {} failed - Reason: {}", transactionId, reason);
+    }
+
+    /**
+     * log dispute creation
+     */
+
+     public void logDisputeCreated(String disputeId, String transactionId) {
+        log.info("AUDIT: Dispute {} created for transaction {}", disputeId, transactionId);
+     } 
+
+     /**
+      * Log dispute resolution
+      */
+      public void logDisputeResolved(String disputed, String resolution) {
+        log.info("AUDIT: Dispute {} resolved - Resolution: {}", disputed, resolution);
+      }
 }

@@ -75,7 +75,7 @@ public class UserController {
             user.setRole(User.UserRole.valueOf(request.getRole()));
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
-
+                    
             User createdUser = userService.createUser(user);
             UserDTO userDTO = DTOMapper.toUserDTO(createdUser);
 

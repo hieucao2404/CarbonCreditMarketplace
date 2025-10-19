@@ -5,6 +5,7 @@ import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.repository.CarbonCreditRepository;
+import com.carboncredit.repository.JourneyDataRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,6 +31,7 @@ public class CarbonCreditService {
 
     private final CarbonCreditRepository carbonCreditRepository;
     private final AuditService auditService;
+    private final JourneyDataRepository journeyDataRepository;
 
     public BigDecimal calculateCO2Reduction(BigDecimal distanceKm, BigDecimal energyConsumeKwh) {
         // avergage gasoline car emission
@@ -253,5 +257,49 @@ public class CarbonCreditService {
         BigDecimal finalCredits = baseCredits.multiply(multiplier).multiply(statusMultiplier);
 
         return finalCredits.setScale(6, RoundingMode.HALF_UP);
+    }
+
+    /*
+     * Get comprehensive CVA verification statistics
+     */
+    public Map<String, Object> getCVAStatistics(User cva) {
+        Map<String, Object> stats = new HashMap<>();
+
+        // personal CVA stats
+        long myVerified = journeyDataRepository.countByVerifiedByAndVerificationStatus(
+                cva, JourneyData.VerificationStatus.VERIFIED);
+        long myRejected = journeyDataRepository.countByVerifiedByAndVerificationStatus(
+                cva, JourneyData.VerificationStatus.REJECTED);
+        long myTotal = journeyDataRepository.countByVerifiedBy(cva);
+
+        // system-wide stats
+        long systemPending = journeyDataRepository
+                .countByVerificationStatus(JourneyData.VerificationStatus.PENDING_VERIFICATION);
+        long systemVerified = journeyDataRepository.countByVerificationStatus(JourneyData.VerificationStatus.VERIFIED);
+        long systemRejected = journeyDataRepository.countByVerificationStatus(JourneyData.VerificationStatus.REJECTED);
+
+        // Over due journeys
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        long overdueCount = journeyDataRepository.countOverduePendingJourneys(sevenDaysAgo);
+
+        // Personal stats
+        stats.put("myVerifiedCount", myVerified);
+        stats.put("myRejectedCount", myRejected);
+        stats.put("myTotalProcessed", myTotal);
+        stats.put("myApprovalRate", myTotal > 0 ? (myVerified * 100.0 / myTotal) : 0.0);
+
+        stats.put("systemPendingCount", systemPending);
+        stats.put("systemVerifiedCount", systemVerified);
+        stats.put("systemRejectedCount", systemRejected);
+        stats.put("systemTotalProcessed", systemVerified + systemRejected);
+        stats.put("overdueJourneysCount", overdueCount);
+
+        // Workload indicator
+        stats.put("workloadStatus", systemPending > 50 ? "HIGH" : systemPending > 20 ? "MEDIUM" : "LOW");
+
+        log.info("CVA {} statistics: verified={}, rejected={}, pending={}",
+                cva.getUsername(), myVerified, myRejected, systemPending);
+
+        return stats;
     }
 }

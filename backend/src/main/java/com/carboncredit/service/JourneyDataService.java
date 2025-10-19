@@ -16,6 +16,7 @@ import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
 import com.carboncredit.exception.UnauthorizedOperationException;
+import com.carboncredit.repository.CarbonCreditRepository;
 import com.carboncredit.repository.JourneyDataRepository;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityNotFoundException;
@@ -31,6 +32,8 @@ public class JourneyDataService {
     private final JourneyDataRepository journeyDataRepository;
     private final CarbonCreditService carbonCreditService;
     private final ValidationService validationService;
+    private final CarbonCreditRepository carbonCreditRepository;
+    private final AuditService auditService;
 
     private void validateJourneyData(JourneyData journeyData) {
         validationService.validateJourneyData(journeyData);
@@ -49,25 +52,31 @@ public class JourneyDataService {
 
         journeyData.setCo2ReducedKg(co2Reduced);
 
+        // INITILA VERIFICATION STATUS
+        journeyData.setVerificationStatus(JourneyData.VerificationStatus.PENDING_VERIFICATION);
+
         // Set creation time if not already set
         if (journeyData.getCreatedAt() == null) {
             journeyData.setCreatedAt(LocalDateTime.now());
         }
 
-        JourneyData saved = journeyDataRepository.save(journeyData);
-        log.info("Joureny {} created successfully with CO2 Reduction: {} kg", saved.getId(), saved.getCo2ReducedKg());
+        JourneyData savedJourney = journeyDataRepository.save(journeyData);
 
-        // Auto create carbon credit if significant co2 reduction
-        if (co2Reduced.compareTo(BigDecimal.ZERO) > 0) {
-            try {
-                carbonCreditService.createCarbonCredit(saved);
-                log.info("Auto-created carbon credit for journey {}", saved.getId());
-            } catch (Exception e) {
-                log.warn("Failed to create carbon credit for journey {}: {}", saved.getId(), e.getMessage());
-            }
-        }
+        CarbonCredit credit = new CarbonCredit();
+        credit.setJourney(savedJourney);
+        credit.setUser(journeyData.getUser());
+        credit.setCo2ReducedKg(co2Reduced);
+        credit.setCreditAmount(co2Reduced);
+        credit.setStatus(CarbonCredit.CreditStatus.PENDING); // ⭐ PENDING
 
-        return saved;
+        carbonCreditRepository.save(credit);
+
+        // Log audit
+        auditService.logSubmission(credit, journeyData.getUser());
+
+        log.info("Journey created with PENDING verification status");
+
+        return savedJourney;
 
     }
 
@@ -284,6 +293,36 @@ public class JourneyDataService {
         return new JourneyStatisticsWithCredits(journeys.size(), totalDistance, totalEnergy, averageDistance,
                 totalCo2Reduced,
                 journeysWithCreditCount, journeysWithoutCreditCount, totalCreditAmount, potentialCreditAmount);
+    }
+
+    public void deleteJourney(UUID journeyId) {
+        JourneyData journey = findById(journeyId);
+
+        // check if journey can be deleted (onlu pending / rejected journeys)
+        if (journey.getVerificationStatus() == JourneyData.VerificationStatus.VERIFIED) {
+            throw new BusinessOperationException("journeyData", "delete",
+                    "Cannot delete verified journey. Credit have been issued");
+        }
+
+        // delete associated carbon credit if exists
+        if (journey.getCarbonCredit() != null) {
+            carbonCreditRepository.delete(journey.getCarbonCredit());
+        }
+
+        journeyDataRepository.delete(journey);
+        log.info("Journey {} deleted successfully", journeyId);
+    }
+
+    /**
+     * Find journeys by verification status
+     * Used by CVA to get pending journeys, and by admin to filter journeys
+     */
+    @Transactional(readOnly = true)
+    public List<JourneyData> findByVerificationStatus(JourneyData.VerificationStatus status) {
+        if (status == null) {
+            throw new ValidationException("Verification status cannot be null");
+        }
+        return journeyDataRepository.findByVerificationStatus(status);
     }
 
 }
