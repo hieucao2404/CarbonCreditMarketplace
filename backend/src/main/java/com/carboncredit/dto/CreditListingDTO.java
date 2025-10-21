@@ -25,7 +25,7 @@ public class CreditListingDTO {
 
     public CreditListingDTO(CreditListing listing) {
         this.id = listing.getId();
-        this.credit = listing.getCredit() != null ? new CarbonCreditDTO(listing.getCredit(), true) : null; // Use lightweight constructor
+        this.credit = listing.getCredit() != null ? new CarbonCreditDTO(listing.getCredit()) : null; // Use lightweight constructor
         this.listingType = listing.getListingType();
         this.price = listing.getPrice();
         this.minBid = listing.getMinBid();
@@ -39,7 +39,7 @@ public class CreditListingDTO {
     public CreditListingDTO(CreditListing listing, boolean lightweight) {
         this.id = listing.getId();
         if (!lightweight && listing.getCredit() != null) {
-            this.credit = new CarbonCreditDTO(listing.getCredit(), true);
+            this.credit = new CarbonCreditDTO(listing.getCredit());
         }
         this.listingType = listing.getListingType();
         this.price = listing.getPrice();

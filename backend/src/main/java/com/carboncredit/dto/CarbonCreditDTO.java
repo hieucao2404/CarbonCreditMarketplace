@@ -14,44 +14,48 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CarbonCreditDTO {
-    private UUID id;
-    private UserDTO owner;
-    private UUID journeyId;
+   // Credit Details
+    private UUID creditId;
+    private String status;
     private BigDecimal co2ReducedKg;
     private BigDecimal creditAmount;
-    private CarbonCredit.CreditStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime verifiedAt;
     private LocalDateTime listedAt;
 
-    // Constructor from CarbonCredit entity
-    public CarbonCreditDTO(CarbonCredit credit) {
-        this.id = credit.getId();
-        this.owner = credit.getUser() != null ? new UserDTO(credit.getUser()) : null;
-        this.journeyId = credit.getJourney() != null ? credit.getJourney().getId() : null;
-        this.co2ReducedKg = credit.getCo2ReducedKg();
-        this.creditAmount = credit.getCreditAmount();
-        this.status = credit.getStatus();
-        this.createdAt = credit.getCreatedAt();
-        this.verifiedAt = credit.getVerifiedAt();
-        this.listedAt = credit.getListedAt();
-    }
+    // Related "Flat" IDs & Info
+    private UUID journeyId;
+    private UUID ownerId;
+    private String ownerUsername;
+    private UUID verifierId;
+    private String verifierUsername;
 
-    // Lightweight constructor for preventing circular references
-    public CarbonCreditDTO(CarbonCredit credit, boolean lightweight) {
-        this.id = credit.getId();
-        if (!lightweight && credit.getUser() != null) {
-            this.owner = new UserDTO();
-            this.owner.setId(credit.getUser().getId());
-            this.owner.setUsername(credit.getUser().getUsername());
-            this.owner.setRole(credit.getUser().getRole());
-        }
-        this.journeyId = credit.getJourney() != null ? credit.getJourney().getId() : null;
+    /**
+     * This constructor is safe to call from your DTOMapper,
+     * AS LONG AS the DTOMapper is called from your @Transactional Service.
+     */
+    public CarbonCreditDTO(CarbonCredit credit) {
+        this.creditId = credit.getId();
+        this.status = credit.getStatus().name();
         this.co2ReducedKg = credit.getCo2ReducedKg();
         this.creditAmount = credit.getCreditAmount();
-        this.status = credit.getStatus();
         this.createdAt = credit.getCreatedAt();
         this.verifiedAt = credit.getVerifiedAt();
         this.listedAt = credit.getListedAt();
+
+        // Safely access lazy-loaded relationships
+        if (credit.getJourney() != null) {
+            this.journeyId = credit.getJourney().getId();
+        }
+
+        if (credit.getUser() != null) {
+            this.ownerId = credit.getUser().getId();
+            this.ownerUsername = credit.getUser().getUsername();
+        }
+        
+        if (credit.getVerifiedBy() != null) {
+            this.verifierId = credit.getVerifiedBy().getId();
+            this.verifierUsername = credit.getVerifiedBy().getUsername();
+        }
     }
 }

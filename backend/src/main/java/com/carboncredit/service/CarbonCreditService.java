@@ -11,8 +11,16 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.carboncredit.dto.CarbonCreditDTO;
+import com.carboncredit.util.DTOMapper;
+import java.util.stream.Collectors;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,6 +40,7 @@ public class CarbonCreditService {
     private final CarbonCreditRepository carbonCreditRepository;
     private final AuditService auditService;
     private final JourneyDataRepository journeyDataRepository;
+
 
     public BigDecimal calculateCO2Reduction(BigDecimal distanceKm, BigDecimal energyConsumeKwh) {
         // avergage gasoline car emission
@@ -302,4 +311,67 @@ public class CarbonCreditService {
 
         return stats;
     }
+
+    @Transactional(readOnly = true)
+    public Page<CarbonCreditDTO> findCreditsByUser(User user, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<CarbonCredit> entityPage = carbonCreditRepository.findByUser(user, pageable);
+        return entityPage.map(DTOMapper::toCarbonCreditDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<CarbonCreditDTO> findCreditDtoById(UUID id) {
+        return carbonCreditRepository.findById(id).map(DTOMapper::toCarbonCreditDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CarbonCreditDTO> findAllCredits(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<CarbonCredit> entityPage = carbonCreditRepository.findAll(pageable);
+
+        // Use the static method reference
+        return entityPage.map(DTOMapper::toCarbonCreditDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CarbonCreditDTO> findCreditsByStatus(String status, int page, int size) {
+        try {
+            CreditStatus creditStatus = CreditStatus.valueOf(status.toUpperCase());
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            Page<CarbonCredit> entityPage = carbonCreditRepository.findByStatus(creditStatus, pageable);
+
+            // Use the static method reference
+            return entityPage.map(DTOMapper::toCarbonCreditDTO);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid credit status request: {}", status);
+            throw new IllegalArgumentException("Invalid credit status: " + status);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<CarbonCredit> findCreditById(UUID id) {
+        return carbonCreditRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CarbonCreditDTO> findDtosByUser(User user) {
+        return carbonCreditRepository.findByUser(user).stream()
+                .map(DTOMapper::toCarbonCreditDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CarbonCreditDTO> findPendingCreditDtos() {
+        return carbonCreditRepository.findByStatus(CarbonCredit.CreditStatus.PENDING).stream()
+                .map(DTOMapper::toCarbonCreditDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CarbonCreditDTO> findAvailableCreditDtos() {
+        return carbonCreditRepository.findAvailableCredits().stream()
+                .map(DTOMapper::toCarbonCreditDTO)
+                .collect(Collectors.toList());
+    }
+
 }

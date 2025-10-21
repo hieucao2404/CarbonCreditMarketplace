@@ -1,0 +1,293 @@
+{
+  "info": {
+    "name": "Carbon Credit - Credits API",
+    "description": "API for viewing generated Carbon Credits (EV_OWNER, ADMIN, CVA)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "evowner_username",
+      "value": "evowner1",
+      "type": "string"
+    },
+    {
+      "key": "evowner_password",
+      "value": "EV123",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin001",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123",
+      "type": "string"
+    },
+    {
+      "key": "credit_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. EV Owner - Get My Credits",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 OK\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Response has success=true\", function () {",
+              "    pm.expect(jsonData.success).to.be.true;",
+              "});",
+              "",
+              "pm.test(\"Data is a page object\", function () {",
+              "    pm.expect(jsonData.data).to.have.property('content');",
+              "    pm.expect(jsonData.data).to.have.property('totalPages');",
+              "});",
+              "",
+              "// Save the first creditId for later requests",
+              "if (jsonData.data.content && jsonData.data.content.length > 0) {",
+              "    var firstCreditId = jsonData.data.content[0].creditId;",
+              "    pm.collectionVariables.set(\"credit_id\", firstCreditId);",
+              "    console.log(\"Saved credit_id: \" + firstCreditId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/credits/my-credits?page=0&size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "credits",
+            "my-credits"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. EV Owner - Get Credit by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/credits/{{credit_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "credits",
+            "{{credit_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Admin - Get All Credits",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/credits/admin/all?page=0&size=20",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "credits",
+            "admin",
+            "all"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "20"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Admin - Get Credits by Status (VERIFIED)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/credits/admin/by-status?status=VERIFIED&page=0&size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "credits",
+            "admin",
+            "by-status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "VERIFIED"
+            },
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Admin - Get Credits by Status (PENDING)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/credits/admin/by-status?status=PENDING&page=0&size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "credits",
+            "admin",
+            "by-status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "PENDING"
+            },
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

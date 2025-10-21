@@ -45,7 +45,7 @@ public class TransactionDTO {
         
         // Include basic credit info without deep relationships
         if (transaction.getCredit() != null) {
-            this.credit = new CarbonCreditDTO(transaction.getCredit(), true); // Use lightweight constructor
+            this.credit = new CarbonCreditDTO(transaction.getCredit()); // Use lightweight constructor
         }
         
         // Include basic listing info without deep relationships

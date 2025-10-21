@@ -1,0 +1,322 @@
+{
+  "info": {
+    "name": "Carbon Credit - Vehicle API",
+    "description": "API for managing EV Owner vehicles (EV_OWNER and ADMIN roles)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "evowner_username",
+      "value": "evowner1",
+      "type": "string"
+    },
+    {
+      "key": "evowner_password",
+      "value": "EV123",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin001",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123",
+      "type": "string"
+    },
+    {
+      "key": "vehicle_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. EV Owner - Create Vehicle",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 201 Created\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "var jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Vehicle ID is returned\", function () {",
+              "    pm.expect(jsonData.data.id).to.not.be.empty;",
+              "    pm.collectionVariables.set(\"vehicle_id\", jsonData.data.id);",
+              "    console.log(\"Saved vehicle_id: \" + jsonData.data.id);",
+              "});",
+              "",
+              "pm.test(\"VIN matches request\", function () {",
+              "    pm.expect(jsonData.data.vin).to.eql(\"TESTVIN1234567890\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vin\": \"TESTVIN1234567890\",\n  \"model\": \"Tesla Model Y\",\n  \"registrationDate\": \"2023-05-15\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/vehicles",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. EV Owner - Get My Vehicles",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/my-vehicles",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "my-vehicles"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. EV Owner - Get Vehicle by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/{{vehicle_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "{{vehicle_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. EV Owner - Update Vehicle",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"Tesla Model Y (Updated)\",\n  \"registrationDate\": \"2023-05-16\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/{{vehicle_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "{{vehicle_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Admin - Get All Vehicles",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/admin/all",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "admin",
+            "all"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Admin - Get Vehicle by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/{{vehicle_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "{{vehicle_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. EV Owner - Delete Vehicle",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/{{vehicle_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "{{vehicle_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{evowner_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{evowner_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

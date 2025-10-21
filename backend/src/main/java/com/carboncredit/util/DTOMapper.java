@@ -47,7 +47,7 @@ public class DTOMapper {
     }
 
     public static CarbonCreditDTO toCarbonCreditDTO(CarbonCredit credit, boolean lightweight) {
-        return credit != null ? new CarbonCreditDTO(credit, lightweight) : null;
+        return credit != null ? new CarbonCreditDTO(credit) : null;
     }
 
     public static List<CarbonCreditDTO> toCarbonCreditDTOList(List<CarbonCredit> credits) {
