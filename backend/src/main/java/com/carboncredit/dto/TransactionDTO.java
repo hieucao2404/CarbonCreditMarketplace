@@ -50,7 +50,7 @@ public class TransactionDTO {
         
         // Include basic listing info without deep relationships
         if (transaction.getListing() != null) {
-            this.listing = new CreditListingDTO(transaction.getListing(), true); // Use lightweight constructor
+            this.listing = new CreditListingDTO(transaction.getListing()); // Use lightweight constructor
         }
         
         this.amount = transaction.getAmount();

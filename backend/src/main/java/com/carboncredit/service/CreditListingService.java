@@ -12,6 +12,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.carboncredit.dto.CreditListingDTO;
+import com.carboncredit.dto.MarketplaceStatsDTO;
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.CreditListing;
@@ -21,6 +23,7 @@ import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
 import com.carboncredit.repository.CarbonCreditRepository;
 import com.carboncredit.repository.CreditListingRepository;
+import com.carboncredit.util.DTOMapper;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,64 +34,60 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Transactional
 public class CreditListingService {
-    
+
     private final CreditListingRepository creditListingRepository;
     private final CarbonCreditRepository carbonCreditRepository;
     private final ValidationService validationService; // Keep this
 
     // ==================== LISTING CREATION ====================
 
-    public CreditListing createFixedPriceListing(UUID creditId, User owner, BigDecimal price) {
-        log.info("Creating fixed-price listing for credit {} by user {} at price {}", 
-            creditId, owner.getUsername(), price);
+    /**
+     * Creates a fixed-price listing and returns its DTO
+     */
+    public CreditListingDTO createFixedPriceListing(UUID creditId, User owner, BigDecimal price) {
+        log.info("Creating fixed-price listing for credit {} by user {} at price {}", creditId, owner.getUsername(),
+                price);
 
-        // Find and validate the carbon credit
         CarbonCredit credit = carbonCreditRepository.findById(creditId)
-            .orElseThrow(() -> new EntityNotFoundException("Carbon credit not found: " + creditId));
+                .orElseThrow(() -> new EntityNotFoundException("Carbon Credit not found" + creditId));
 
-        // Use ValidationService
         validationService.validateListingCreation(credit, owner, price);
 
-        // Check if credit is already listed
         Optional<CreditListing> existingListing = creditListingRepository.findByCredit(credit);
         if (existingListing.isPresent() && existingListing.get().getStatus() == ListingStatus.ACTIVE) {
-            throw new BusinessOperationException("Credit is already actively listed in marketplace");
+            throw new BusinessOperationException("Credit is already actively listed");
         }
+        CreditListing listing = CreditListing.builder().credit(credit).listingType(ListingType.FIXED).price(price)
+                .status(ListingStatus.ACTIVE).build();
 
-        // Create new fixed-price listing
-        CreditListing listing = new CreditListing();
-        listing.setCredit(credit);
-        listing.setListingType(ListingType.FIXED);
-        listing.setPrice(price);
-        listing.setStatus(ListingStatus.ACTIVE);
-
-        // Update carbon credit status to LISTED
         credit.setStatus(CreditStatus.LISTED);
         credit.setListedAt(LocalDateTime.now());
 
-        // Save both entities
         CreditListing savedListing = creditListingRepository.save(listing);
-        carbonCreditRepository.save(credit);
+        carbonCreditRepository.save(credit); // Save credit status update
 
-        log.info("Fixed-price listing created successfully: {} for credit {} at price {}", 
-            savedListing.getId(), creditId, price);
+        log.info("Fixed-price listing created successfully: {}", savedListing.getId());
 
-        return savedListing;
+        // Map to DTO before returning
+        return DTOMapper.toCreditListingDTO(savedListing);
     }
 
-    // ==================== LISTING MANAGEMENT ====================
+    /**
+     * Ipdate listing price and return the updated DTO
+     */
+    public CreditListingDTO updateListingPrice(UUID listingId, User owner, BigDecimal newPrice) {
+        log.info("Updating listing {} price to {} by user {}", listingId, newPrice);
 
-    public CreditListing updateListingPrice(UUID listingId, User owner, BigDecimal newPrice) {
-        log.info("Updating listing {} price to {} by user {}", listingId, newPrice, owner.getUsername());
+        CreditListing listing = findListingEntityById(listingId);
 
-        CreditListing listing = findListingById(listingId);
-
-        // Use ValidationService
         validationService.validateOwnership(listing, owner);
         validationService.validatePrice(newPrice);
 
         if (listing.getStatus() != ListingStatus.ACTIVE) {
-            throw new BusinessOperationException("Cannot update price for inactive listings");
+            throw new BusinessOperationException("Cannot update price fo inactive listings");
+        }
+        if (listing.getListingType() != ListingType.FIXED) {
+            throw new BusinessOperationException("Price can only update for Fixed listings");
         }
 
         BigDecimal oldPrice = listing.getPrice();
@@ -96,147 +95,191 @@ public class CreditListingService {
 
         CreditListing updated = creditListingRepository.save(listing);
 
-        log.info("Listing {} price updated from {} to {} by user {}", 
-            listingId, oldPrice, newPrice, owner.getUsername());
+        log.info("Listing {} price updated from {} to {}", listingId, oldPrice, newPrice);
 
-        return updated;
+        // map to DTO
+        return DTOMapper.toCreditListingDTO(updated);
     }
 
-    public CreditListing cancelListing(UUID listingId, User owner) {
+    /**
+     * Cancels a listing and returns its DTO
+     */
+    public CreditListingDTO cancelListing(UUID listingId, User owner) {
         log.info("Cancelling listing {} by user {}", listingId, owner.getUsername());
 
-        CreditListing listing = findListingById(listingId);
+        CreditListing listing = findListingEntityById(listingId); // Use internal helper
 
-        // Use ValidationService
         validationService.validateOwnership(listing, owner);
 
         if (listing.getStatus() != ListingStatus.ACTIVE) {
             throw new BusinessOperationException("Can only cancel active listings");
         }
 
-        // Update listing status
         listing.setStatus(ListingStatus.CANCELLED);
 
-        // Revert credit status back to VERIFIED
         CarbonCredit credit = listing.getCredit();
-        credit.setStatus(CreditStatus.VERIFIED);
+        credit.setStatus(CreditStatus.VERIFIED); // Revert status
         credit.setListedAt(null);
 
-        // Save updates
         CreditListing cancelled = creditListingRepository.save(listing);
         carbonCreditRepository.save(credit);
 
-        log.info("Listing {} cancelled by user {}", listingId, owner.getUsername());
+        log.info("Listing {} cancelled", listingId);
 
-        return cancelled;
+        // Map to DTO
+        return DTOMapper.toCreditListingDTO(cancelled);
     }
 
-    // ==================== MARKETPLACE BROWSING ====================
-
+    // ==================== MARKETPLACE BROWSING ========================
+    /**
+     * Gets active listing as a DTO Page
+     */
     @Transactional(readOnly = true)
-    public Page<CreditListing> getActiveListings(int page, int size, String sortBy) {
+    public Page<CreditListingDTO> getActiveListings(int page, int size, String sortBy) {
         validationService.validatePageParameters(page, size);
-        
         Sort sort = createSort(sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        return creditListingRepository.findByStatus(ListingStatus.ACTIVE, pageable);
+        Page<CreditListing> entityPage = creditListingRepository.findByStatus(ListingStatus.ACTIVE, pageable);
+
+        // Map Page<Entity> -> Page<DTO>
+        return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
+    /**
+     * Searched active listings by price range and returns a DTO page
+     */
+
     @Transactional(readOnly = true)
-    public Page<CreditListing> searchByPriceRange(BigDecimal minPrice, BigDecimal maxPrice, int page, int size) {
+    public Page<CreditListingDTO> searchByPriceRange(BigDecimal minPrice, BigDecimal maxPrice, int page, int size) {
         validationService.validatePageParameters(page, size);
         validationService.validatePriceRange(minPrice, maxPrice);
-        
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
-        return creditListingRepository.findByStatusAndPriceBetween(
-            ListingStatus.ACTIVE, minPrice, maxPrice, pageable);
+        Page<CreditListing> entityPage = creditListingRepository.findByStatusAndPriceBetween(
+                ListingStatus.ACTIVE, minPrice, maxPrice, pageable);
+
+        // Map Page<Entity> -> Page<DTO>
+        return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
+    /**
+     * Gets a user's listings (all statuses) as a DTO Page.
+     */
     @Transactional(readOnly = true)
-    public Page<CreditListing> getUserListings(User user, int page, int size) {
+    public Page<CreditListingDTO> getUserListings(User user, int page, int size) {
         validationService.validateUser(user);
         validationService.validatePageParameters(page, size);
-        
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return creditListingRepository.findByUser(user, pageable);
+        Page<CreditListing> entityPage = creditListingRepository.findByUser(user, pageable);
+
+        // Map Page<Entity> -> Page<DTO>
+        return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
+    /**
+     * Gets a user's ACTIVE listings as a DTO Page.
+     */
     @Transactional(readOnly = true)
-    public Page<CreditListing> getUserActiveListings(User user, int page, int size) {
+    public Page<CreditListingDTO> getUserActiveListings(User user, int page, int size) {
         validationService.validateUser(user);
         validationService.validatePageParameters(page, size);
-        
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return creditListingRepository.findByUserAndStatus(user, ListingStatus.ACTIVE, pageable);
+        Page<CreditListing> entityPage = creditListingRepository.findByUserAndStatus(user, ListingStatus.ACTIVE,
+                pageable);
+
+        // Map Page<Entity> -> Page<DTO>
+        return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
-    // ==================== PURCHASE OPERATIONS ====================
+    // ================== PURCHASE OPERATIONS ===========================
+    /**
+     * Processes the purchase (update staus ) and returns the DTO
+     * this method does not handle wallet transfer
+     * belong to transaction service
+     */
+    public CreditListingDTO processPurchaseStatusUpdate(UUID listingId, User buyer){
+        log.info("Processing purchase status update for listing {} by buyer {}", listingId, buyer.getUsername());
 
-    public CreditListing purchaseListing(UUID listingId, User buyer) {
-        log.info("Processing purchase of listing {} by user {}", listingId, buyer.getUsername());
+        CreditListing listing = findListingEntityById(listingId); // Use internal helper
 
-        CreditListing listing = findListingById(listingId);
-
-        // Use ValidationService
-        validationService.validatePurchase(listing, buyer);
+        validationService.validatePurchase(listing, buyer); // Checks buyer != seller, etc.
 
         if (listing.getStatus() != ListingStatus.ACTIVE) {
-            throw new BusinessOperationException("Listing is no longer available for purchase");
+            throw new BusinessOperationException("Listing is no longer available for purchase. Status: " + listing.getStatus());
         }
 
-        // Complete the purchase
-        listing.setStatus(ListingStatus.CLOSED);
-
-        // Update carbon credit status
+        // --- Update Statuses ---
+        listing.setStatus(ListingStatus.CLOSED); // Use CLOSED instead of SOLD for clarity
         CarbonCredit credit = listing.getCredit();
-        credit.setStatus(CreditStatus.SOLD);
+        credit.setStatus(CreditStatus.SOLD); // Credit is now SOLD
 
-        // Save updates
-        CreditListing sold = creditListingRepository.save(listing);
+        // --- Save Updates ---
+        CreditListing updatedListing = creditListingRepository.save(listing);
         carbonCreditRepository.save(credit);
 
-        log.info("Purchase completed: Listing {} sold to {} for price {}", 
-            listing.getId(), buyer.getUsername(), listing.getPrice());
+        log.info("Purchase status updated: Listing {} marked CLOSED, Credit {} marked SOLD",
+            listing.getId(), credit.getId());
 
-        return sold;
+        // Map to DTO
+        return DTOMapper.toCreditListingDTO(updatedListing);
     }
 
     // ==================== STATISTICS ====================
 
+    /**
+     * Gets marketplace statistics and returns a DTO.
+     */
     @Transactional(readOnly = true)
-    public MarketplaceStats getMarketplaceStats() {
+    public MarketplaceStatsDTO getMarketplaceStats() {
         long totalActiveListings = creditListingRepository.countActiveListings();
         BigDecimal averagePrice = creditListingRepository.getAverageFixedPrice();
 
-        return new MarketplaceStats(
+        // Use the DTO constructor
+        return new MarketplaceStatsDTO(new MarketplaceStats(
             totalActiveListings,
-            averagePrice != null ? averagePrice : BigDecimal.ZERO
-        );
+            averagePrice
+        ));
     }
+    
+
 
     // ==================== HELPER METHODS ====================
 
-    private CreditListing findListingById(UUID listingId) {
+    /**
+     * Internal helper to find the ENTITY, ensuring it exists.
+     */
+    private CreditListing findListingEntityById(UUID listingId) {
         validationService.validateId(listingId, "CreditListing");
-        
         return creditListingRepository.findById(listingId)
             .orElseThrow(() -> new EntityNotFoundException("Credit listing not found: " + listingId));
     }
+    
+    /**
+     * Finds a single listing by ID and returns its DTO.
+     * (Needed for the Controller's GET /{id} endpoint)
+     */
+    @Transactional(readOnly = true)
+    public Optional<CreditListingDTO> findListingDtoById(UUID listingId) {
+        return creditListingRepository.findById(listingId)
+                .map(DTOMapper::toCreditListingDTO);
+    }
 
     private Sort createSort(String sortBy) {
+         // Using simplified sorting based on common needs
         return switch (sortBy != null ? sortBy.toLowerCase() : "newest") {
-            case "price_asc" -> Sort.by("price").ascending();
-            case "price_desc" -> Sort.by("price").descending();
-            case "co2_asc" -> Sort.by("credit.co2ReducedKg").ascending();
-            case "co2_desc" -> Sort.by("credit.co2ReducedKg").descending();
-            case "oldest" -> Sort.by("createdAt").ascending();
-            default -> Sort.by("createdAt").descending();
+            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
+            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
+            // Add other sorts if needed, e.g., by credit amount or CO2
+            case "oldest" -> Sort.by(Sort.Direction.ASC, "createdAt");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt"); // Default: newest
         };
     }
 
     // ==================== STATISTICS CLASS ====================
-
+    // Keep this inner class for getMarketplaceStats()
     public static class MarketplaceStats {
         private final long totalActiveListings;
         private final BigDecimal averagePrice;
@@ -248,11 +291,5 @@ public class CreditListingService {
 
         public long getTotalActiveListings() { return totalActiveListings; }
         public BigDecimal getAveragePrice() { return averagePrice; }
-
-        @Override
-        public String toString() {
-            return String.format("MarketplaceStats{listings=%d, avgPrice=%s}", 
-                totalActiveListings, averagePrice);
-        }
     }
 }

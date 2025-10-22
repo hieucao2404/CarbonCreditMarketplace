@@ -3,6 +3,7 @@ package com.carboncredit.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
 public class CreditListing {
     @Id
@@ -64,4 +66,5 @@ public class CreditListing {
     public enum ListingStatus {
         ACTIVE, CLOSED, CANCELLED, PENDING_TRANSACTION
     }
+
 }

@@ -17,17 +17,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreditListingRequest {
 
-    @NotNull(message = "Credit ID is required")
+    @NotNull(message = "Credit ID cannot be null")
     private UUID creditId;
 
-    @NotNull(message = "Listing type is required")
-    private ListingType listingType;
-
-    @Positive(message   = "Price must be positive")
+    @NotNull(message = "Price cannot be null")
+    @Positive(message = "Price must be positive")
     private BigDecimal price;
-
-    @Positive(message = "Minimum bid must be positive")
-    private BigDecimal minBid;
-
-    private LocalDateTime auctionEndTime;
 }

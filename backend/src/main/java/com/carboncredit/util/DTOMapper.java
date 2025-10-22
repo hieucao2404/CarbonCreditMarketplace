@@ -62,7 +62,7 @@ public class DTOMapper {
     }
 
     public static CreditListingDTO toCreditListingDTO(CreditListing listing, boolean lightweight) {
-        return listing != null ? new CreditListingDTO(listing, lightweight) : null;
+        return listing != null ? new CreditListingDTO(listing) : null;
     }
 
     public static List<CreditListingDTO> toCreditListingDTOList(List<CreditListing> listings) {
