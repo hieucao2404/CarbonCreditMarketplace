@@ -80,6 +80,27 @@ public class WalletService {
         return wallet.getCashBalance();
     }
 
-    
+    /**
+     * Check if a user has sufficient balance of a specific
+     * Required by TransactionService to validate purchases
+     */
+    @Transactional(readOnly = true)
+    public boolean hasSufficientBalance(UUID userId, BigDecimal amount, String balanceType) {
+        // Find the wallet or throw an error if it doesn't exist
+        Wallet wallet = findByUserId(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + userId));
+
+        // Validate the amount (must be positive for this check)
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount to check must be positive.");
+        }
+
+        // Check the specified balance type
+        if ("CREDIT".equalsIgnoreCase(balanceType)) {
+            return wallet.getCreditBalance().compareTo(amount) >= 0;
+        } else { // Default to CASH
+            return wallet.getCashBalance().compareTo(amount) >= 0;
+        }
+    }
 
 }

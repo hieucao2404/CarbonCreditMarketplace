@@ -15,12 +15,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.carboncredit.dto.ApiResponse;
 import com.carboncredit.dto.DepositRequest;
 import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.dto.WalletResponse;
 import com.carboncredit.entity.Transaction;
 import com.carboncredit.entity.User;
 import com.carboncredit.entity.Wallet;
+import com.carboncredit.exception.ResourceNotFoundException;
 import com.carboncredit.dto.WithdrawRequest;
 import com.carboncredit.service.BankingService;
 import com.carboncredit.util.DTOMapper;
@@ -77,7 +79,8 @@ public class WalletController {
 
             boolean hasSufficientBalance;
             if ("CREDIT".equalsIgnoreCase(balanceType)) {
-                hasSufficientBalance = wallet.getCreditBalance().compareTo(amount) >= 0;  // Fixed: use getCreditBalance()
+                hasSufficientBalance = wallet.getCreditBalance().compareTo(amount) >= 0; // Fixed: use
+                                                                                         // getCreditBalance()
             } else {
                 hasSufficientBalance = wallet.getCashBalance().compareTo(amount) >= 0;
             }
@@ -144,7 +147,7 @@ public class WalletController {
 
             // Process banking withdrawal
             boolean withdrawalSuccessful = bankingService.processWithdrawal(user.getId(), request.getAmount(),
-                    request.getBankAccountInfo());  // Fixed: correct field name
+                    request.getBankAccountInfo()); // Fixed: correct field name
 
             if (!withdrawalSuccessful) {
                 log.warn("Banking withdrawal failed for user: {}", user.getUsername());
@@ -170,30 +173,49 @@ public class WalletController {
 
     // Get wallet transaction history - Fixed to use existing TransactionService
     @GetMapping("/transactions")
-    public ResponseEntity<Page<TransactionDTO>> getWalletTransactions(
+    public ResponseEntity<ApiResponse<Page<TransactionDTO>>> getWalletTransactions( // Added ApiResponse wrapper
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
+        log.info("Fetching wallet transactions for user {}", authentication.getName());
         try {
             User user = userService.findByUsername(authentication.getName())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", authentication.getName())); // Use
+                                                                                                                     // specific
+                                                                                                                     // exception
 
-            // Use existing TransactionService to get user's transaction history
-            Page<Transaction> transactions = transactionService.getUserTransactions(user, page, size);
-            Page<TransactionDTO> transactionDTOs = DTOMapper.toTransactionDTOPage(transactions);
+            // *** FIX HERE ***
+            // Service now returns the DTO page directly
+            Page<TransactionDTO> transactionDTOs = transactionService.getUserTransactions(user, page, size);
+            // *** REMOVED: Page<Transaction> transactions = ... ***
+            // *** REMOVED: Page<TransactionDTO> transactionDTOs =
+            // DTOMapper.toTransactionDTOPage(transactions); ***
 
-            log.info("Retrieved {} wallet transactions for user: {}", 
-                    transactions.getTotalElements(), user.getUsername());
-            return ResponseEntity.ok(transactionDTOs);
+            log.info("Retrieved {} wallet transactions for user: {}",
+                    transactionDTOs.getTotalElements(), user.getUsername()); // Use DTO page for count
+
+            // Wrap in ApiResponse
+            return ResponseEntity.ok(ApiResponse.success(transactionDTOs));
+
+        } catch (ResourceNotFoundException e) { // Catch specific exception
+            log.warn("Cannot get transactions - user not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            log.error("Error retrieving wallet transactions: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            log.error("Error retrieving wallet transactions for user {}: {}", authentication.getName(), e.getMessage(),
+                    e); // Log full exception
+            // Wrap in ApiResponse
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve transaction history."));
         }
+
     }
 
     // Admin: Get any user's wallet (admin only)
     @GetMapping("/admin/user/{userId}")
-    public ResponseEntity<WalletResponse> getUserWallet(@PathVariable UUID userId, Authentication authentication) {  // Fixed: @PathVariable not @RequestParam
+    public ResponseEntity<WalletResponse> getUserWallet(@PathVariable UUID userId, Authentication authentication) { // Fixed:
+                                                                                                                    // @PathVariable
+                                                                                                                    // not
+                                                                                                                    // @RequestParam
         try {
             User currentUser = userService.findByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -255,11 +277,11 @@ public class WalletController {
     // Helper method to map Wallet entity to WalletResponse DTO
     private WalletResponse mapToWalletResponse(Wallet wallet) {
         return new WalletResponse(
-                wallet.getId(), 
-                wallet.getUser().getId(), 
-                wallet.getUser().getUsername(), 
+                wallet.getId(),
+                wallet.getUser().getId(),
+                wallet.getUser().getUsername(),
                 wallet.getCreditBalance(),
-                wallet.getCashBalance(), 
+                wallet.getCashBalance(),
                 wallet.getUpdatedAt());
     }
 }

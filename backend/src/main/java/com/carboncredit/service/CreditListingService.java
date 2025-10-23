@@ -200,32 +200,32 @@ public class CreditListingService {
      * this method does not handle wallet transfer
      * belong to transaction service
      */
-    public CreditListingDTO processPurchaseStatusUpdate(UUID listingId, User buyer){
-        log.info("Processing purchase status update for listing {} by buyer {}", listingId, buyer.getUsername());
+    // public CreditListingDTO processPurchaseStatusUpdate(UUID listingId, User buyer){
+    //     log.info("Processing purchase status update for listing {} by buyer {}", listingId, buyer.getUsername());
 
-        CreditListing listing = findListingEntityById(listingId); // Use internal helper
+    //     CreditListing listing = findListingEntityById(listingId); // Use internal helper
 
-        validationService.validatePurchase(listing, buyer); // Checks buyer != seller, etc.
+    //     validationService.validatePurchase(listing, buyer); // Checks buyer != seller, etc.
 
-        if (listing.getStatus() != ListingStatus.ACTIVE) {
-            throw new BusinessOperationException("Listing is no longer available for purchase. Status: " + listing.getStatus());
-        }
+    //     if (listing.getStatus() != ListingStatus.ACTIVE) {
+    //         throw new BusinessOperationException("Listing is no longer available for purchase. Status: " + listing.getStatus());
+    //     }
 
-        // --- Update Statuses ---
-        listing.setStatus(ListingStatus.CLOSED); // Use CLOSED instead of SOLD for clarity
-        CarbonCredit credit = listing.getCredit();
-        credit.setStatus(CreditStatus.SOLD); // Credit is now SOLD
+    //     // --- Update Statuses ---
+    //     listing.setStatus(ListingStatus.CLOSED); // Use CLOSED instead of SOLD for clarity
+    //     CarbonCredit credit = listing.getCredit();
+    //     credit.setStatus(CreditStatus.SOLD); // Credit is now SOLD
 
-        // --- Save Updates ---
-        CreditListing updatedListing = creditListingRepository.save(listing);
-        carbonCreditRepository.save(credit);
+    //     // --- Save Updates ---
+    //     CreditListing updatedListing = creditListingRepository.save(listing);
+    //     carbonCreditRepository.save(credit);
 
-        log.info("Purchase status updated: Listing {} marked CLOSED, Credit {} marked SOLD",
-            listing.getId(), credit.getId());
+    //     log.info("Purchase status updated: Listing {} marked CLOSED, Credit {} marked SOLD",
+    //         listing.getId(), credit.getId());
 
-        // Map to DTO
-        return DTOMapper.toCreditListingDTO(updatedListing);
-    }
+    //     // Map to DTO
+    //     return DTOMapper.toCreditListingDTO(updatedListing);
+    // }
 
     // ==================== STATISTICS ====================
 

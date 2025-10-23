@@ -13,30 +13,56 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DisputeDTO {
-    private UUID id;
+    private UUID disputeId;
+    private String status; // OPEN, RESOLVED, CLOSED
+    private String reason;
+    private String resolution;
+    private LocalDateTime createdAt;
+    private LocalDateTime resolvedAt;
+
+    // Related "Flat" IDs & Info
     private UUID transactionId;
     private UUID raisedById;
     private String raisedByUsername;
     private UUID resolvedById;
     private String resolvedByUsername;
-    private String reason;
-    private String status;
-    private String resolution;
-    private LocalDateTime createdAt;
-    private LocalDateTime resolvedAt;
+    private UUID buyerId; // From Transaction
+    private String buyerUsername;
+    private UUID sellerId; // From Transaction
+    private String sellerUsername;
 
-    // Constructor from Dispute entity
+    /**
+     * Constructor for DTOMapper (called from Service layer)
+     */
     public DisputeDTO(Dispute dispute) {
-        this.id = dispute.getId();
-        this.transactionId = dispute.getTransaction() != null ? dispute.getTransaction().getId() : null;
-        this.raisedById = dispute.getRaisedBy() != null ? dispute.getRaisedBy().getId() : null;
-        this.raisedByUsername = dispute.getRaisedBy() != null ? dispute.getRaisedBy().getUsername() : null;
-        this.resolvedById = dispute.getResolvedBy() != null ? dispute.getResolvedBy().getId() : null;
-        this.resolvedByUsername = dispute.getResolvedBy() != null ? dispute.getResolvedBy().getUsername() : null;
+        this.disputeId = dispute.getId();
+        this.status = dispute.getStatus().name();
         this.reason = dispute.getReason();
-        this.status = dispute.getStatus() != null ? dispute.getStatus().toString() : null;
         this.resolution = dispute.getResolution();
         this.createdAt = dispute.getCreatedAt();
         this.resolvedAt = dispute.getResolvedAt();
+
+        if (dispute.getTransaction() != null) {
+            this.transactionId = dispute.getTransaction().getId();
+            // Get buyer/seller info from transaction if available
+            if (dispute.getTransaction().getBuyer() != null) {
+                this.buyerId = dispute.getTransaction().getBuyer().getId();
+                this.buyerUsername = dispute.getTransaction().getBuyer().getUsername();
+            }
+            if (dispute.getTransaction().getSeller() != null) {
+                this.sellerId = dispute.getTransaction().getSeller().getId();
+                this.sellerUsername = dispute.getTransaction().getSeller().getUsername();
+            }
+        }
+
+        if (dispute.getRaisedBy() != null) {
+            this.raisedById = dispute.getRaisedBy().getId();
+            this.raisedByUsername = dispute.getRaisedBy().getUsername();
+        }
+
+        if (dispute.getResolvedBy() != null) {
+            this.resolvedById = dispute.getResolvedBy().getId();
+            this.resolvedByUsername = dispute.getResolvedBy().getUsername();
+        }
     }
 }

@@ -1,0 +1,408 @@
+{
+  "info": {
+    "name": "Carbon Credit - Transaction API (Phase 4)",
+    "description": "API for purchasing listings and viewing transaction history.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "buyer_username",
+      "value": "buyer1",
+      "type": "string"
+    },
+    {
+      "key": "buyer_password",
+      "value": "Buyer123",
+      "type": "string"
+    },
+    {
+      "key": "seller_username",
+      "value": "evowner1",
+      "comment": "Should match the owner of the credit being listed",
+      "type": "string"
+    },
+    {
+      "key": "seller_password",
+      "value": "EV123",
+      "type": "string"
+    },
+    {
+      "key": "admin_username",
+      "value": "admin001",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123",
+      "type": "string"
+    },
+    {
+      "key": "listing_id",
+      "value": "",
+      "comment": "This should be set by the 'CreditListingAPI' collection",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Buyer - Initiate Purchase",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Expect 201 Created for successful synchronous purchase",
+              "// Expect 202 Accepted if payment is asynchronous (depends on your PaymentService)",
+              "pm.test(\"Status code is 201 or 202\", function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([201, 202]);",
+              "});",
+              "",
+              "var jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Transaction ID is returned\", function () {",
+              "    pm.expect(jsonData.data.transactionId).to.not.be.empty;",
+              "    pm.collectionVariables.set(\"transaction_id\", jsonData.data.transactionId);",
+              "    console.log(\"Saved transaction_id: \" + jsonData.data.transactionId);",
+              "});",
+              "",
+              "// Check if transaction completed immediately",
+              "if (pm.response.code === 201) {",
+              "    pm.test(\"Transaction status is COMPLETED\", function () {",
+              "        pm.expect(jsonData.data.status).to.eql(\"COMPLETED\");",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/purchase/{{listing_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "purchase",
+            "{{listing_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Buyer - Get My History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/my-history?page=0&size=5",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "my-history"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "5"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Seller - Get My History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/my-history?page=0&size=5",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "my-history"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "5"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{seller_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{seller_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Buyer - Get Transaction by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transaction_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Seller - Get Transaction by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transaction_id}}"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{seller_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{seller_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Buyer - Attempt Cancel (Should Fail if Completed)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/{{transaction_id}}/cancel",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "{{transaction_id}}",
+            "cancel"
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{buyer_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{buyer_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Admin - Get All Transactions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/admin/all?page=0&size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "admin",
+            "all"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Admin - Get Transactions by Status (COMPLETED)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/transactions/admin/by-status?status=COMPLETED&page=0&size=5",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "transactions",
+            "admin",
+            "by-status"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "COMPLETED"
+            },
+            {
+              "key": "page",
+              "value": "0"
+            },
+            {
+              "key": "size",
+              "value": "5"
+            }
+          ]
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{admin_username}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{admin_password}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

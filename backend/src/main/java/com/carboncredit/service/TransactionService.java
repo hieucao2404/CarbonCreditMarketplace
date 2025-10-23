@@ -1,5 +1,6 @@
 package com.carboncredit.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +15,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.carboncredit.dto.TransactionDTO;
 import com.carboncredit.entity.CarbonCredit;
+import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.CreditListing;
 import com.carboncredit.entity.CreditListing.ListingStatus;
 import com.carboncredit.entity.Dispute;
@@ -24,6 +28,7 @@ import com.carboncredit.entity.Transaction.TransactionStatus;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
 import com.carboncredit.exception.EntityNotFoundException;
+import com.carboncredit.exception.InsufficientBalanceException;
 import com.carboncredit.exception.PaymentException;
 import com.carboncredit.exception.UnauthorizedOperationException;
 import com.carboncredit.repository.CarbonCreditRepository;
@@ -31,6 +36,7 @@ import com.carboncredit.repository.CreditListingRepository;
 import com.carboncredit.repository.DisputeRepository;
 import com.carboncredit.repository.TransactionRepository;
 import com.carboncredit.service.PaymentService.PaymentResult;
+import com.carboncredit.util.DTOMapper;
 
 @Service
 public class TransactionService {
@@ -61,29 +67,33 @@ public class TransactionService {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private WalletService walletService;
+
     // ==== TRANSACTION AND PROCESSING ================
 
-    // Initiates transaction for purchasing a carbon credit
     @Transactional
     public Transaction initiatePurchase(UUID listingId, User buyer) {
         log.info("Initiating purchase for listing {} by user {}", listingId, buyer.getUsername());
 
-        // Validate parameters
-        validationService.validateId(listingId, "CreditListing");
+        validationService.validateId(listingId, "CreditLisitng");
         validationService.validateUser(buyer);
 
-        // Find and validate listing
         CreditListing listing = creditListingRepository.findById(listingId)
-                .orElseThrow(() -> new EntityNotFoundException("Listing not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Listing not found with ID: " + listingId));
 
-        // Validate purchase request
         validationService.validatePurchaseRequest(listing, buyer);
 
-        // Get associated carbon credit
         CarbonCredit credit = listing.getCredit();
         User seller = credit.getUser();
 
-        // Create transaction
+        // Check Buyer's Wallet for sufficienct cash BEFORE creating transaction
+        if (!walletService.hasSufficientBalance(buyer.getId(), listing.getPrice(), "CASH")) {
+            log.warn("Insuffiecent funds for buyer {}. Required: {}, Available: {}", buyer.getUsername(),
+                    listing.getPrice(), walletService.getCashBalance(buyer.getId()));
+            throw new InsufficientBalanceException("Insufficient cash balance. required: " + listing.getPrice());
+        }
+
         Transaction transaction = new Transaction();
         transaction.setCredit(credit);
         transaction.setListing(listing);
@@ -91,368 +101,361 @@ public class TransactionService {
         transaction.setSeller(seller);
         transaction.setAmount(listing.getPrice());
         transaction.setStatus(TransactionStatus.PENDING);
-        transaction.setCreatedAt(LocalDateTime.now());
 
         Transaction savedTransaction = transactionRepository.save(transaction);
 
-        // Update listing status to prevent concurrent purchases
         listing.setStatus(ListingStatus.PENDING_TRANSACTION);
         creditListingRepository.save(listing);
 
-        // Process payment
+        log.info("Transaction {} initiated, proceeding to payment.", savedTransaction.getId());
+        // Trigger asynchronous payment processing or handle synchronously
         try {
+            // Option 1: Synchronous Payment
             processPayment(savedTransaction);
+            // If processPayment throws an exception, the @Transactional will rollback
+            // everything
+            // If it succeeds, completeTransaction is called within processPayment
+
+            // Option 2: Asynchronous Payment (more complex set up)
+            // paymentService.initiateAsynchronousPayment(savedTransaction);
+            // log.info("Asynchronous payment initiated for transaction {}",
+            // savedTransaction.getId());
         } catch (Exception e) {
-            log.error("Payment failed for transaction {}: {}", savedTransaction.getId(), e.getMessage());
-            // Rollback listing status
-            listing.setStatus(ListingStatus.ACTIVE);
-            creditListingRepository.save(listing);
-
-            savedTransaction.setStatus(TransactionStatus.CANCELLED);
-            transactionRepository.save(savedTransaction);
-
-            throw new PaymentException("Payment processing failed: " + e.getMessage(), e);
+            // This catch block might not be strictly needed if processPayment
+            // but it's good for logging the initiation failure context.
+            log.error("Payment initiation failed for transaction {}: {}", savedTransaction.getId(), e.getMessage());
+            // The @Transactional rollback should handle reverting the listing status and
+            // transaction.
+            // Explicit rollback of listing status might be needed if processPayment error
+            // isn't transactional.
+            if (e instanceof PaymentException) {
+                // Payment specific exception already handled or thrown by processPayment
+                throw e;
+            } else {
+                // Wrap unexpected errors
+                throw new RuntimeException("Unexpected error during payment initiation: " + e.getMessage(), e);
+            }
         }
-
-        // Log audit trail
-        // auditService.logTransactionInitiated(savedTransaction.getId().toString(),
-        //         buyer.getId().toString(), seller.getId().toString(), savedTransaction.getAmount().toString());
-
-        log.info("Transaction {} initiated successfully", savedTransaction.getId());
-        return savedTransaction;
+        // Return the PENDING transaction reference (caller should check status later if
+        // async)
+        return savedTransaction; // Or return the final completed/failed transaction if sync
     }
 
-    // Process payment for a transaction
     @Transactional
     public void processPayment(Transaction transaction) {
         log.info("Processing payment for transaction {}", transaction.getId());
-
-        // Validate transaction
         validationService.validateTransactionSecurity(transaction);
 
-        // Process payment through payment service
         PaymentResult paymentResult = paymentService.processPayment(transaction.getId(),
                 transaction.getAmount(), transaction.getBuyer().getId().toString(),
                 transaction.getSeller().getId().toString());
 
         if (paymentResult.isSuccess()) {
+            log.info("Payment successful for transaction {}, completing transaction.", transaction.getId());
             completeTransaction(transaction);
         } else {
+            log.warn("Payment failed for transaction {}: {}", transaction.getId(), paymentResult.getErrorMessage());
+            // Transactional rollback should handle failing the transaction record,
+            // but we might need explicit state changes depending on PaymentService
+            // behavior.
             failTransaction(transaction, "Payment failed: " + paymentResult.getErrorMessage());
             throw new PaymentException("Payment processing failed: " + paymentResult.getErrorMessage());
+
         }
     }
 
-    // Complete a successful transaction
     @Transactional
     public Transaction completeTransaction(Transaction transaction) {
         log.info("Completing transaction {}", transaction.getId());
 
-        // Validate current transaction state
-        CreditListing currentListing = creditListingRepository.findById(transaction.getListing().getId())
-                .orElseThrow(() -> new EntityNotFoundException("Listing not found"));
-        CarbonCredit currentCredit = carbonCreditRepository.findById(transaction.getCredit().getId())
-                .orElseThrow(() -> new EntityNotFoundException("Carbon credit not found"));
+        // Re-fetch entities within this transaction for safety
+        Transaction currentTransaction = findTransactionById(transaction.getId()); // Use internal helper
+        CreditListing currentListing = creditListingRepository.findById(currentTransaction.getListing().getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Listing not found during completion: " + currentTransaction.getListing().getId()));
+        CarbonCredit currentCredit = carbonCreditRepository.findById(currentTransaction.getCredit().getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Carbon credit not found during completion: " + currentTransaction.getCredit().getId()));
 
-        // Validate transaction preconditions
-        validationService.validateTransactionPreconditions(transaction, currentListing, currentCredit);
+        User buyer = currentTransaction.getBuyer();
+        User seller = currentTransaction.getSeller();
+        BigDecimal price = currentTransaction.getAmount();
+        BigDecimal creditAmount = currentCredit.getCreditAmount();
 
-        // Update transaction status
-        transaction.setStatus(TransactionStatus.COMPLETED);
-        transaction.setCompletedAt(LocalDateTime.now());
+        // validate transaction preconditions
+        if (currentTransaction.getStatus() != TransactionStatus.PENDING) {
+            log.warn("Attempted to complete transaction {} which is not PENDING (Status: {})", transaction.getId(),
+                    currentTransaction.getStatus());
+            // Depending on flow, this might be okay (e.g., if re-processed) or an error.
+            // For now, let's allow re-completion attempt but log warning. If it must be
+            // PENDING, uncomment below:
+            // throw new BusinessOperationException("Transaction is not in PENDING state.
+            // Cannot complete.");
+        }
+        if (currentListing.getStatus() != ListingStatus.PENDING_TRANSACTION) {
+            log.warn(
+                    "Attempted to complete transaction {} for listing {} which is not PENDING_TRANSACTION (Status: {})",
+                    transaction.getId(), currentListing.getId(), currentListing.getStatus());
+            // Allow for now, but log. If strict state needed, uncomment below:
+            // throw new BusinessOperationException(
+            // "Listing is not in PENDING_TRANSACTION state. Cannot complete purchase.");
 
-        // Update listing status
+        }
+        // --- Perform Atomic Transfers (Idempotency check recommended in WalletService)
+        // ---
+        log.debug("Transferring cash: {} from {} to {}", price, buyer.getUsername(), seller.getUsername());
+        walletService.updateCashBalance(buyer.getId(), price.negate());
+        walletService.updateCashBalance(seller.getId(), price);
+
+        log.debug("Transferring credits: {} from {} to {}", creditAmount, seller.getUsername(), buyer.getUsername());
+        walletService.updateCreditBalance(seller.getId(), creditAmount.negate());
+        walletService.updateCreditBalance(buyer.getId(), creditAmount);
+
+        // --- Update Entity Statuses ---
+        currentTransaction.setStatus(TransactionStatus.COMPLETED);
+        currentTransaction.setCompletedAt(LocalDateTime.now());
         currentListing.setStatus(ListingStatus.CLOSED);
+        currentCredit.setStatus(CreditStatus.SOLD);
+
+        // --- Save all changes ---
+        Transaction completedTransaction = transactionRepository.save(currentTransaction);
         creditListingRepository.save(currentListing);
+        carbonCreditRepository.save(currentCredit);
 
-        // Save completed transaction
-        Transaction completedTransaction = transactionRepository.save(transaction);
-
-        // Log audit trail
-        auditService.logTransactionCompleted(
-                completedTransaction.getId().toString(),
-                completedTransaction.getBuyer().getId().toString(),
-                completedTransaction.getSeller().getId().toString());
-
-        // Send notification
-        notificationService.notifyTransactionCompleted(completedTransaction.getBuyer(),
-                completedTransaction.getSeller(), completedTransaction.getId().toString());
+        // --- Log Audit & Notify ---
+        auditService.logTransactionCompleted(completedTransaction.getId().toString(), buyer.getId().toString(),
+                seller.getId().toString());
+        notificationService.notifyTransactionCompleted(buyer, seller, completedTransaction.getId().toString());
 
         log.info("Transaction {} completed successfully", completedTransaction.getId());
-        return completedTransaction;
+        return completedTransaction; // Return the completed entity
     }
 
-    // Fail a transaction with reason
     @Transactional
     public Transaction failTransaction(Transaction transaction, String reason) {
-        log.info("Failing transaction {} with reason: {}", transaction.getId(), reason);
+        log.warn("Failing transaction {} with reason: {}", transaction.getId(), reason);
 
-        // Update transaction status
-        transaction.setStatus(TransactionStatus.CANCELLED);
-        Transaction failedTransaction = transactionRepository.save(transaction);
+        // Re-fetch for sagety
+        Transaction currentTransaction = findTransactionById(transaction.getId());
 
-        // Restore listing status
-        CreditListing listing = transaction.getListing();
-        listing.setStatus(ListingStatus.ACTIVE);
-        creditListingRepository.save(listing);
+        // Onlye fail if it's Pending
+        if (currentTransaction.getStatus() != TransactionStatus.PENDING) {
+            log.warn("Attempted to fail transaction {} which is not PENDING (Status: {})", transaction.getId(),
+                    currentTransaction.getStatus());
+            return currentTransaction; // Already completed or failed, do nothing
+        }
+        currentTransaction.setStatus(TransactionStatus.CANCELLED);
+        Transaction failedTransaction = transactionRepository.save(currentTransaction);
 
-        // Log audit trail
-        auditService.logTransactionFailed(transaction.getId().toString(), reason);
+        // Restore listing status IF it was pending due to this transaction
+        CreditListing listing = currentTransaction.getListing();
+        if (listing != null && listing.getStatus() == ListingStatus.PENDING_TRANSACTION) {
+            listing.setStatus(ListingStatus.ACTIVE);
+            creditListingRepository.save(listing);
+            log.info("Restored listing {} to ACTIVE after transaction failure", listing.getId());
+        }
 
-        // Send notification
-        notificationService.notifyTransactionFailed(transaction.getBuyer(),
-                transaction.getSeller(), transaction.getId().toString(), reason);
+        auditService.logTransactionFailed(failedTransaction.getId().toString(), reason);
+        notificationService.notifyTransactionFailed(failedTransaction.getBuyer(),
+                failedTransaction.getSeller(), failedTransaction.getId().toString(), reason);
 
-        log.info("Transaction {} failed: {}", failedTransaction.getId(), reason);
+        log.info("Transaction {} marked as CANCELLED", failedTransaction.getId());
         return failedTransaction;
     }
 
-    // Cancel a pending transaction
     @Transactional
     public Transaction cancelTransaction(UUID transactionId, User requestingUser) {
-        log.info("Cancelling transaction {} by user {}", transactionId, requestingUser.getUsername());
-
+        log.info("User {} attempting to cancel transaction {}", requestingUser.getUsername(), transactionId);
         Transaction transaction = findTransactionById(transactionId);
 
-        // Validate cancellation rights
         if (transaction.getStatus() != TransactionStatus.PENDING) {
-            throw new BusinessOperationException("Only pending transactions can be cancelled");
+            throw new BusinessOperationException(
+                    "Only PENDING transactions can be cancelled. Status: " + transaction.getStatus());
         }
-
         if (!canCancelTransaction(transaction, requestingUser)) {
-            throw new UnauthorizedOperationException("User not authorized to cancel this transaction");
+            throw new UnauthorizedOperationException(requestingUser.getId().toString(), "transaction",
+                    transactionId.toString(), "cancel");
         }
 
-        return failTransaction(transaction, "Cancelled by " + requestingUser.getUsername());
+        // Use failTransaction logic for consistency
+        return failTransaction(transaction, "Cancelled by user " + requestingUser.getUsername());
     }
 
-    // Check if user can cancel the transaction
     private boolean canCancelTransaction(Transaction transaction, User user) {
         return transaction.getBuyer().getId().equals(user.getId()) ||
                 transaction.getSeller().getId().equals(user.getId()) ||
                 hasAdminRole(user);
     }
 
-    // Check if user has admin role
     private boolean hasAdminRole(User user) {
-        return User.UserRole.ADMIN.equals(user.getRole()) || User.UserRole.CVA.equals(user.getRole());
+        return user != null && (user.getRole() == User.UserRole.ADMIN || user.getRole() == User.UserRole.CVA);
     }
 
-    // =========== QUERY METHODS ===========
+    // ==========================================================
+    // QUERY METHODS (Returning DTOs)
+    // ==========================================================
 
-    // Find transaction by ID
+    @Transactional(readOnly = true)
+    public TransactionDTO findTransactionDtoById(UUID transactionId) {
+        validationService.validateId(transactionId, "Transaction");
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new EntityNotFoundException("Transaction not found with ID: " + transactionId));
+        return DTOMapper.toTransactionDTO(transaction); // Use static mapper
+    }
+
+    // Keep internal helper that returns entity
     public Transaction findTransactionById(UUID transactionId) {
         validationService.validateId(transactionId, "Transaction");
-
         return transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new EntityNotFoundException("Transaction not found with ID: " + transactionId));
     }
 
-    // Get all transactions for a user (as buyer or seller)
     @Transactional(readOnly = true)
-    public Page<Transaction> getUserTransactions(User user, int page, int size) {
+    public Page<TransactionDTO> getUserTransactions(User user, int page, int size) {
         validationService.validateUser(user);
         validationService.validatePageParameters(page, size);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return transactionRepository.findByBuyerOrSeller(user, user, pageable);
+        Page<Transaction> entityPage = transactionRepository.findByBuyerOrSeller(user, user, pageable);
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // Get purchase history for a buyer
     @Transactional(readOnly = true)
-    public Page<Transaction> getPurchaseHistory(User buyer, int page, int size) {
+    public Page<TransactionDTO> getPurchaseHistory(User buyer, int page, int size) {
         validationService.validateUser(buyer);
         validationService.validatePageParameters(page, size);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return transactionRepository.findByBuyer(buyer, pageable);
+        Page<Transaction> entityPage = transactionRepository.findByBuyer(buyer, pageable);
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // Get sales history for a seller
     @Transactional(readOnly = true)
-    public Page<Transaction> getSalesHistory(User seller, int page, int size) {
+    public Page<TransactionDTO> getSalesHistory(User seller, int page, int size) {
         validationService.validateUser(seller);
         validationService.validatePageParameters(page, size);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return transactionRepository.findBySeller(seller, pageable);
+        Page<Transaction> entityPage = transactionRepository.findBySeller(seller, pageable);
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // Get transactions by status
     @Transactional(readOnly = true)
-    public Page<Transaction> getTransactionsByStatus(TransactionStatus status, int page, int size) {
+    public Page<TransactionDTO> getTransactionsByStatus(TransactionStatus status, int page, int size) {
         validationService.validatePageParameters(page, size);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return transactionRepository.findByStatus(status, pageable);
+        Page<Transaction> entityPage = transactionRepository.findByStatus(status, pageable);
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // Get disputed transactions
     @Transactional(readOnly = true)
-    public Page<Transaction> getDisputedTransactions(int page, int size) {
+    public Page<TransactionDTO> getDisputedTransactions(int page, int size) {
         validationService.validatePageParameters(page, size);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return transactionRepository.findByStatus(TransactionStatus.DISPUTED, pageable);
+        Page<Transaction> entityPage = transactionRepository.findByStatus(TransactionStatus.DISPUTED, pageable);
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // ================== Dispute related methods ====================
-
-    // Create a dispute for a transaction
-    @Transactional
-    public Dispute createDispute(UUID transactionId, User user, String reason) {
-        log.info("Create dispute for transaction {} by user {}", transactionId, user.getUsername());
-
-        // Find and validate transaction
-        Transaction transaction = findTransactionById(transactionId);
-
-        // validate dispute creation rights
-        validationService.validateDisputeCreationRights(transaction, user);
-        validationService.validateDisputeReason(reason);
-        validationService.validateNoExistingOpenDisputes(transactionId);
-
-        // create dispute
-        Dispute dispute = new Dispute();
-        dispute.setTransaction(transaction);
-        dispute.setRaisedBy(user);
-        dispute.setReason(reason);
-        dispute.setStatus(DisputeStatus.OPEN);
-        dispute.setCreatedAt(LocalDateTime.now());
-
-        Dispute savedDispute = disputeRepository.save(dispute);
-
-        // update transaction status
-        transaction.setStatus(TransactionStatus.DISPUTED);
-        transactionRepository.save(transaction);
-
-        // determine other partu for notifications
-        User otherParty = transaction.getBuyer().getId().equals(user.getId()) ? transaction.getSeller()
-                : transaction.getBuyer();
-
-        // Send notification
-        notificationService.notifyDisputeCreated(user, otherParty, transaction.getId().toString());
-
-        // autdit log
-        auditService.logDisputeCreated(savedDispute.getId().toString(), transaction.getId().toString());
-
-        log.info("Dispute {} create successfully for transaction {}", savedDispute.getId(), transactionId);
-        return savedDispute;
+    @Transactional(readOnly = true)
+    public Page<TransactionDTO> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate, int page,
+            int size) {
+        log.info("Fetching transactions DTOs by date range: {} to {}, page: {}, size: {}", startDate, endDate, page,
+                size);
+        validationService.validatePageParameters(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Transaction> entityPage = transactionRepository.findByDateRange(startDate, endDate, pageable);
+        log.info("Found {} transactions in date range", entityPage.getTotalElements());
+        return entityPage.map(DTOMapper::toTransactionDTO); // Use static mapper reference
     }
 
-    // Mark transaction as disputed (called by DisputeSerive)
+    // ==========================================================
+    // DISPUTE-RELATED STATUS UPDATES (Called BY DisputeService)
+    // ==========================================================
+
     @Transactional
     public Transaction markAsDisputed(UUID transactionId, String disputeId) {
         log.info("Marking transaction {} as disputed due to dispute {}", transactionId, disputeId);
-
-        Transaction transaction = findTransactionById(transactionId);
-
-        // Validate transaction status change
-        validationService.validateTransactionStatusChange(transaction, TransactionStatus.DISPUTED);
-
+        Transaction transaction = findTransactionById(transactionId); // Use internal helper
+        validationService.validateTransactionStatusChange(transaction, TransactionStatus.DISPUTED); // Assumes this
+                                                                                                    // exists
         transaction.setStatus(TransactionStatus.DISPUTED);
         Transaction updatedTransaction = transactionRepository.save(transaction);
-
-        log.info("Transaction {} marked as disputed", transactionId);
-        return updatedTransaction;
+        log.info("Transaction {} marked as DISPUTED", transactionId);
+        return updatedTransaction; // Return entity as this is likely internal
     }
 
-    // resolve transaction dispute (called the dispute is resolve)
     @Transactional
-    public Transaction resolveDisputedTransaction(UUID transactionId, String resolution) {
-        log.info("Resolving disputed transaction {} with resolution: {}", transactionId, resolution);
-
-        Transaction transaction = findTransactionById(transactionId);
+    public Transaction updateStatusAfterDisputeResolution(UUID transactionId, TransactionStatus finalStatus,
+            String resolution) {
+        log.info("Updating transaction {} status to {} after dispute resolution: {}", transactionId, finalStatus,
+                resolution);
+        Transaction transaction = findTransactionById(transactionId); // Use internal helper
 
         if (transaction.getStatus() != TransactionStatus.DISPUTED) {
-            throw new BusinessOperationException("Transaction is not in disputed state");
+            log.warn("Attempted to resolve dispute for transaction {} which is not disputed (status: {})",
+                    transactionId, transaction.getStatus());
+            // Proceed cautiously or throw error based on requirements
         }
 
-        // determine resoltoon aciton based on resolution text
-        if (resolution.toLowerCase().contains("compele") || resolution.toLowerCase().contains("proceed")) {
-            // complete the transaction
-            transaction.setStatus(TransactionStatus.COMPLETED);
-            transaction.setCompletedAt(LocalDateTime.now());
+        transaction.setStatus(finalStatus);
 
-            // update associated lisitng status
-            CreditListing listing = transaction.getListing();
-            listing.setStatus(ListingStatus.CLOSED);
-            creditListingRepository.save(listing);
-        } else if (resolution.toLowerCase().contains("cancel") || resolution.toLowerCase().contains("refund")) {
-            // cancel the transacton and restore listing
-            transaction.setStatus(TransactionStatus.CANCELLED);
-
-            CreditListing listing = transaction.getListing();
-            listing.setStatus(ListingStatus.ACTIVE);
-            creditListingRepository.save(listing);
-
-            // process refund if payment was made
-            log.info("Refund processing initiated for transaction {}", transactionId);
+        CreditListing listing = transaction.getListing();
+        if (listing != null) {
+            if (finalStatus == TransactionStatus.CANCELLED) {
+                if (listing.getStatus() == ListingStatus.CLOSED
+                        || listing.getStatus() == ListingStatus.PENDING_TRANSACTION) {
+                    listing.setStatus(ListingStatus.ACTIVE);
+                    creditListingRepository.save(listing);
+                    log.info("Restored listing {} to ACTIVE after dispute cancellation", listing.getId());
+                }
+                log.info("Refund processing should be initiated for transaction {}", transactionId);
+            } else if (finalStatus == TransactionStatus.COMPLETED) {
+                if (listing.getStatus() != ListingStatus.CLOSED) {
+                    listing.setStatus(ListingStatus.CLOSED);
+                    creditListingRepository.save(listing);
+                    log.info("Ensured listing {} is CLOSED after dispute completion", listing.getId());
+                }
+                if (transaction.getCompletedAt() == null) {
+                    transaction.setCompletedAt(LocalDateTime.now());
+                }
+            }
         }
 
-        Transaction resolvedTransaction = transactionRepository.save(transaction);
-
-        // Log resolution
-        auditService.logTransactionCompleted(transactionId.toString(), transaction.getBuyer().getId().toString(),
-                transaction.getSeller().getId().toString());
-
-        log.info("Disputed transaction {} resovled successfully", transactionId);
-        return resolvedTransaction;
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+        log.info("Transaction {} status updated to {} after dispute resolution", transactionId, finalStatus);
+        return updatedTransaction; // Return entity as this is likely internal
     }
 
-    // Get transaction statistiics for dashboard
+    // ==========================================================
+    // STATISTICS
+    // ==========================================================
+
     @Transactional(readOnly = true)
     public Map<String, Object> getTransactionStatistics(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Generating transaction statistics from {} to {}", startDate, endDate);
-
         Map<String, Object> stats = new HashMap<>();
-        // get basic counts
+
         long totalTransactions = transactionRepository.countByDateRange(startDate, endDate);
-        long completedTransactions = transactionRepository.countByStatusAndDateRange(
-                TransactionStatus.COMPLETED, startDate, endDate);
-        long disputedTransactions = transactionRepository.countByStatusAndDateRange(
-                TransactionStatus.DISPUTED, startDate, endDate);
-        long cancelledTransactions = transactionRepository.countByStatusAndDateRange(
-                TransactionStatus.CANCELLED, startDate, endDate);
+        long completedTransactions = transactionRepository.countByStatusAndDateRange(TransactionStatus.COMPLETED,
+                startDate, endDate);
+        long disputedTransactions = transactionRepository.countByStatusAndDateRange(TransactionStatus.DISPUTED,
+                startDate, endDate);
+        long cancelledTransactions = transactionRepository.countByStatusAndDateRange(TransactionStatus.CANCELLED,
+                startDate, endDate);
 
         stats.put("totalTransactions", totalTransactions);
         stats.put("completedTransactions", completedTransactions);
         stats.put("disputedTransactions", disputedTransactions);
         stats.put("cancelledTransactions", cancelledTransactions);
 
-        // calculate success rate
         double successRate = totalTransactions > 0 ? (double) completedTransactions / totalTransactions * 100 : 0.0;
         stats.put("successRate", Math.round(successRate * 100.0) / 100.0);
 
-        // calculate dispute rate
-        double disputeRate = totalTransactions > 0
-                ? (double) disputedTransactions / totalTransactions * 100
-                : 0.0;
+        double disputeRate = totalTransactions > 0 ? (double) disputedTransactions / totalTransactions * 100 : 0.0;
         stats.put("disputeRate", Math.round(disputeRate * 100.0) / 100.0);
 
-        // Add date range for reference
         stats.put("dateRange", Map.of("startDate", startDate, "endDate", endDate));
 
-        log.info("Generated statistics: {} total transactions, {}% success rate",
-                totalTransactions, stats.get("successRate"));
-
+        log.info("Generated statistics: {} total transactions, {}% success rate", totalTransactions,
+                stats.get("successRate"));
         return stats;
-
-    }
-
-    // get transaction for specific date range
-    @Transactional(readOnly = true)
-    public Page<Transaction> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate, int page,
-            int size) {
-        log.info("Fetching transactions by date range: {} to {}, page: {}, size: {}",
-                startDate, endDate, page, size);
-
-        validationService.validatePageParameters(page, size);
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Transaction> transactions = transactionRepository.findByDateRange(startDate, endDate, pageable);
-
-        log.info("Found {} transactions in date range", transactions.getTotalElements());
-        return transactions;
     }
 
 }

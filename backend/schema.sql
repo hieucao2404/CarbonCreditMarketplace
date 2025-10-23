@@ -89,6 +89,13 @@ CREATE TABLE credit_listings (
 -- add updated_at collum to the credit_listings table
 ALTER TABLE credit_listings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+-- 1. Drop the old constraint
+ALTER TABLE credit_listings DROP CONSTRAINT credit_listings_status_check;
+
+-- 2. Add the new constraint with the missing status
+ALTER TABLE credit_listings ADD CONSTRAINT credit_listings_status_check
+CHECK (status IN ('ACTIVE', 'PENDING_TRANSACTION', 'CLOSED', 'CANCELLED'));
+
 -- A trigger to automatically update the timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

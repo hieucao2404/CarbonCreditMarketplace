@@ -1,6 +1,7 @@
 package com.carboncredit.controller;
 
 import com.carboncredit.dto.ApiResponse;
+import com.carboncredit.dto.LoginRequest;
 import com.carboncredit.dto.RegisterRequest;
 import com.carboncredit.dto.UserDTO;
 import com.carboncredit.entity.User;
@@ -24,6 +25,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 
 /**
  * REST Controller for User Management
@@ -312,6 +316,6 @@ public class UserController {
     public ResponseEntity<String> debugUser(@PathVariable String username) {
         userService.debugPrintUser(username);
         return ResponseEntity.ok("Check logs");
-    }
+    }    
 
 }
