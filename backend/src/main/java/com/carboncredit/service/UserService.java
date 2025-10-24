@@ -1,5 +1,6 @@
 package com.carboncredit.service;
 
+import com.carboncredit.dto.RegisterRequest;
 import com.carboncredit.entity.User;
 import com.carboncredit.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +10,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -22,43 +25,97 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final WalletService walletService;
 
-    public User createUser(User user) {
-        log.info("Creating user: {}", user.getUsername());
-        log.info("Password is null? {}", user.getPassword() == null);  // Debug
-        
-        if (userRepository.existsByUsername(user.getUsername())) {
-            throw new IllegalArgumentException("Username already exists: " + user.getUsername());
+    @Transactional
+    public User createUser(RegisterRequest request) {
+        log.info("Creating user: {}", request.getUsername());
+
+        // Validate username and email uniqueness
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
         }
 
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
-        }
+        // Create User entity
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        user.setRole(User.UserRole.valueOf(request.getRole()));
 
-        // Validate required fields
-        if (user.getFullName() == null || user.getFullName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Full name is required");
-        }
-
-        if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
-            throw new IllegalArgumentException("Phone is required");
-        }
-
-        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+        // Encode password and set passwordHash directly
+        String plainPassword = request.getPassword();
+        if (plainPassword == null || plainPassword.isEmpty()) {
             throw new IllegalArgumentException("Password is required");
         }
 
-        // Hash password
-        String hashedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPasswordHash(hashedPassword);
-        log.info("Password hashed successfully");
+        log.info("Encoding password for user: {}", user.getUsername());
+        String encodedPassword = passwordEncoder.encode(plainPassword);
+        user.setPasswordHash(encodedPassword);
 
-        //save user first
+        // Set timestamps
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        // Save user
         User savedUser = userRepository.save(user);
-        log.info("User saved with ID: {}", savedUser.getId());
+        log.info("User created successfully with encoded password");
 
-        //Create a wallet for user
-        walletService.createWalletForUser(savedUser);
-        log.info("Wallet create for user {}: ", savedUser.getUsername());
+        // Create wallet for the user
+        try {
+            walletService.createWalletForUser(savedUser);
+            log.info("Wallet created for user: {}", savedUser.getUsername());
+        } catch (Exception e) {
+            log.error("Failed to create wallet for user {}: {}", savedUser.getUsername(), e.getMessage());
+        }
+
+        return savedUser;
+    }
+
+    public User createUser(User user) {
+        log.info("Creating user from User entity: {}", user.getUsername());
+
+        // Validate username and email uniqueness
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+
+        // Get password from transient field
+        String plainPassword = user.getPassword();
+        log.info("Password from transient field is null? {}", plainPassword == null);
+
+        if (plainPassword == null || plainPassword.isEmpty()) {
+            throw new IllegalArgumentException("Password is required");
+        }
+
+        // Encode password
+        String encodedPassword = passwordEncoder.encode(plainPassword);
+        user.setPasswordHash(encodedPassword);
+        user.setPassword(null); // Clear transient field
+
+        // Set timestamps if not already set
+        if (user.getCreatedAt() == null) {
+            user.setCreatedAt(LocalDateTime.now());
+        }
+        if (user.getUpdatedAt() == null) {
+            user.setUpdatedAt(LocalDateTime.now());
+        }
+
+        // Save user
+        User savedUser = userRepository.save(user);
+        log.info("User created successfully");
+
+        // Create wallet
+        try {
+            walletService.createWalletForUser(savedUser);
+        } catch (Exception e) {
+            log.error("Failed to create wallet: {}", e.getMessage());
+        }
 
         return savedUser;
     }
@@ -164,8 +221,8 @@ public class UserService {
         if (userDetails.getRole() != null)
             existing.setRole(userDetails.getRole());
 
-        //handle password update 
-        if(userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+        // handle password update
+        if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
             existing.setPassword(userDetails.getPassword());
             existing.setPasswordHash(passwordEncoder.encode(userDetails.getPassword()));
         }
@@ -174,20 +231,21 @@ public class UserService {
     }
 
     public void debugPrintUser(String username) {
-    Optional<User> userOpt = userRepository.findByUsername(username);
-    if (userOpt.isPresent()) {
-        User user = userOpt.get();
-        log.info("🔍 DEBUG User: {}", username);
-        log.info("   - ID: {}", user.getId());
-        log.info("   - Email: {}", user.getEmail());
-        log.info("   - Role: {}", user.getRole());
-        log.info("   - Password Hash Exists: {}", user.getPasswordHash() != null);
-        log.info("   - Password Hash Length: {}", user.getPasswordHash() != null ? user.getPasswordHash().length() : 0);
-        log.info("   - Password Hash Starts With: {}", user.getPasswordHash() != null ? user.getPasswordHash().substring(0, 7) : "null");
-    } else {
-        log.info("🔍 DEBUG User NOT found: {}", username);
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            log.info("🔍 DEBUG User: {}", username);
+            log.info("   - ID: {}", user.getId());
+            log.info("   - Email: {}", user.getEmail());
+            log.info("   - Role: {}", user.getRole());
+            log.info("   - Password Hash Exists: {}", user.getPasswordHash() != null);
+            log.info("   - Password Hash Length: {}",
+                    user.getPasswordHash() != null ? user.getPasswordHash().length() : 0);
+            log.info("   - Password Hash Starts With: {}",
+                    user.getPasswordHash() != null ? user.getPasswordHash().substring(0, 7) : "null");
+        } else {
+            log.info("🔍 DEBUG User NOT found: {}", username);
+        }
     }
-}
-
 
 }

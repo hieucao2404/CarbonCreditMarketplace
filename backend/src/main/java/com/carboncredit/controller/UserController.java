@@ -2,10 +2,12 @@ package com.carboncredit.controller;
 
 import com.carboncredit.dto.ApiResponse;
 import com.carboncredit.dto.LoginRequest;
+import com.carboncredit.dto.LoginResponse;
 import com.carboncredit.dto.RegisterRequest;
 import com.carboncredit.dto.UserDTO;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.ResourceNotFoundException;
+import com.carboncredit.service.JwtService;
 import com.carboncredit.service.UserService;
 import com.carboncredit.util.DTOMapper;
 
@@ -13,10 +15,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -25,9 +30,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
 
 /**
  * REST Controller for User Management
@@ -43,9 +45,54 @@ import org.springframework.web.bind.annotation.RequestBody;
 @CrossOrigin(origins = "*")
 public class UserController {
 
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
     private final UserService userService;
 
     // ==================== PUBLIC ENDPOINTS ====================
+
+    /**
+     * Login endpoint
+     * POST /api/users/login
+     * 
+     * @param loginRequest username and password
+     * @return JWT token and user info
+     */
+
+    @PostMapping("/login")
+     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
+        log.info("Login attempt for user: {}", loginRequest.getUsername());
+
+        try {
+            //Authenticate
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+
+            //load user details
+            User user = userService.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+            //generate JWT token
+            String jwtToken = jwtService.generateToken(user);
+
+            //Build response
+             LoginResponse response = LoginResponse.builder()
+                .token(jwtToken)
+                .tokenType("Bearer")
+                .user(DTOMapper.toUserDTO(user))
+                .expiresIn(jwtService.getExpirationTime())
+                .build();
+        
+        log.info("Login successful for user: {}", loginRequest.getUsername());
+        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+        
+        } catch (Exception e) {
+            log.error("Login failed for user {}: {}", loginRequest.getUsername(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.<LoginResponse>builder().success(false).message("Invalid username or password").build());
+        }
+     }
 
     /**
      * Register new user (Public)
@@ -67,20 +114,21 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserDTO>> registerUser(@Valid @RequestBody RegisterRequest request) {
         log.info("Registering new user: {}", request.getUsername());
-
+        
         try {
             // Create User entity from request
-            User user = new User();
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setPassword(request.getPassword());
-            user.setFullName(request.getFullName());
-            user.setPhone(request.getPhone());
-            user.setRole(User.UserRole.valueOf(request.getRole()));
-            user.setCreatedAt(LocalDateTime.now());
-            user.setUpdatedAt(LocalDateTime.now());
-                    
-            User createdUser = userService.createUser(user);
+            // User user = new User();
+            // user.setUsername(request.getUsername());
+            // user.setEmail(request.getEmail());
+            // user.setPassword(request.getPassword());
+            // user.setFullName(request.getFullName());
+            // user.setPhone(request.getPhone());
+            // user.setRole(User.UserRole.valueOf(request.getRole()));
+            // user.setCreatedAt(LocalDateTime.now());
+            // user.setUpdatedAt(LocalDateTime.now());
+            
+            
+            User createdUser = userService.createUser(request);
             UserDTO userDTO = DTOMapper.toUserDTO(createdUser);
 
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -316,6 +364,6 @@ public class UserController {
     public ResponseEntity<String> debugUser(@PathVariable String username) {
         userService.debugPrintUser(username);
         return ResponseEntity.ok("Check logs");
-    }    
+    }
 
 }
