@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Leaf } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,10 +17,12 @@ const RegisterPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ Cập nhật dữ liệu khi người dùng nhập
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // ✅ Hàm xử lý đăng ký
   const handleRegister = async () => {
     const { role, username, email, password, fullName, phone } = formData;
     if (!role || !username || !email || !password || !fullName || !phone) {
@@ -60,8 +62,18 @@ const RegisterPage = () => {
     }
   };
 
+  // ✅ Bắt sự kiện nhấn Enter để submit
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleRegister();
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-6 relative overflow-hidden">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-6 relative overflow-hidden"
+      onKeyDown={handleKeyDown}
+    >
       {/* ✅ Popup đăng ký thành công */}
       <AnimatePresence>
         {showSuccess && (

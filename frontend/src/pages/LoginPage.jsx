@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Leaf } from "lucide-react";
@@ -72,6 +72,13 @@ const LoginPage = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Hàm xử lý phím Enter
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleLogin();
     }
   };
 
@@ -151,7 +158,10 @@ const LoginPage = () => {
       </div>
 
       {/* Form đăng nhập */}
-      <div className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl border border-gray-100 relative z-10">
+      <div
+        className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl border border-gray-100 relative z-10"
+        onKeyDown={handleKeyPress} // ✅ Gắn sự kiện Enter cho toàn form
+      >
         <h2 className="text-lg font-semibold text-gray-800 mb-1">
           Đăng nhập hệ thống
         </h2>
