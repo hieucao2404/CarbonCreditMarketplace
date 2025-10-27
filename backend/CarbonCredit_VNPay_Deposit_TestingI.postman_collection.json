@@ -1,0 +1,392 @@
+{
+  "info": {
+    "name": "Carbon Credit - VNPAY Deposit API",
+    "description": "VNPAY sandbox deposit testing with USD to VND conversion",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "buyer_username",
+      "value": "buyer1",
+      "type": "string"
+    },
+    {
+      "key": "buyer_password",
+      "value": "Buyer123",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Buyer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "var responseJson = pm.response.json();",
+              "if (responseJson.success && responseJson.data && responseJson.data.token) {",
+              "    pm.collectionVariables.set(\"jwt_token\", responseJson.data.token);",
+              "    console.log(\"✅ JWT Token saved:\", responseJson.data.token);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{buyer_username}}\",\n  \"password\": \"{{buyer_password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/users/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Check Wallet Balance (Before)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var responseJson = pm.response.json();",
+              "console.log(\"💰 Current Wallet Balance:\");",
+              "console.log(\"   Cash: $\" + responseJson.data.cashBalance);",
+              "console.log(\"   Credits: \" + responseJson.data.creditBalance);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/my-wallet",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "my-wallet"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Create VNPAY Payment ($20 USD)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var responseJson = pm.response.json();",
+              "",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Payment URL generated\", function () {",
+              "    pm.expect(responseJson.paymentUrl).to.include('vnpayment.vn');",
+              "});",
+              "",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"💳 VNPAY PAYMENT URL GENERATED\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"\");",
+              "console.log(\"👉 COPY THIS URL AND OPEN IN BROWSER:\");",
+              "console.log(responseJson.paymentUrl);",
+              "console.log(\"\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"📊 PAYMENT DETAILS:\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"   USD Amount: $\" + responseJson.amountUsd);",
+              "console.log(\"   VND Amount: \" + responseJson.amountVnd.toLocaleString() + \" VND\");",
+              "console.log(\"   Exchange Rate: 1 USD = \" + responseJson.exchangeRate + \" VND\");",
+              "console.log(\"   Payment ID: \" + responseJson.paymentId);",
+              "console.log(\"\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"🏦 TEST CARD INFORMATION:\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");",
+              "console.log(\"   Bank: NCB (Ngân hàng Quốc Dân)\");",
+              "console.log(\"   Card Number: 9704198526191432198\");",
+              "console.log(\"   Cardholder: NGUYEN VAN A\");",
+              "console.log(\"   Issue Date: 07/15\");",
+              "console.log(\"   OTP Code: 123456\");",
+              "console.log(\"═══════════════════════════════════════════════════════\");"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amountUsd\": 20.00\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit/vnpay",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit", "vnpay"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Create VNPAY Payment ($100 USD)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var responseJson = pm.response.json();",
+              "console.log(\"💳 Payment URL: \" + responseJson.paymentUrl);",
+              "console.log(\"💵 USD: $\" + responseJson.amountUsd);",
+              "console.log(\"💴 VND: \" + responseJson.amountVnd.toLocaleString());"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amountUsd\": 100.00\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit/vnpay",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit", "vnpay"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Create VNPAY Payment ($5 USD - Small)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amountUsd\": 5.00\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit/vnpay",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit", "vnpay"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Test Validation - Too Small ($0.50)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Should fail validation\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "console.log(\"❌ Expected error - amount too small\");"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amountUsd\": 0.50\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit/vnpay",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit", "vnpay"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Test Validation - Too Large ($25000)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Should fail validation\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "console.log(\"❌ Expected error - amount too large\");"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amountUsd\": 25000.00\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/wallets/deposit/vnpay",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "deposit", "vnpay"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Check Wallet Balance (After)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var responseJson = pm.response.json();",
+              "console.log(\"💰 Updated Wallet Balance:\");",
+              "console.log(\"   Cash: $\" + responseJson.data.cashBalance);",
+              "console.log(\"   Credits: \" + responseJson.data.creditBalance);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/wallets/my-wallet",
+          "host": ["{{base_url}}"],
+          "path": ["api", "wallets", "my-wallet"]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{jwt_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

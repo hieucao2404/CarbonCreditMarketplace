@@ -278,3 +278,15 @@ SELECT v.vehicle_id, v.vin, v.model, u.username
 FROM vehicles v
 JOIN users u ON v.user_id = u.user_id
 WHERE u.username = 'evowner2';
+
+
+SELECT 
+    payment_id,
+    amount,
+    payment_method,
+    payment_status,
+    payment_reference,
+    created_at
+FROM payments 
+ORDER BY created_at DESC 
+LIMIT 5;

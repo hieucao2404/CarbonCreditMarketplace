@@ -75,6 +75,9 @@ public class Payment {
         STRIPE,
         WALLET,
         CRYPTOCURRENCY,
+        VNPAY, // ⭐ Vietnamese payment gateway
+        MOMO, // ⭐ Vietnamese e-wallet
+        ZALOPAY, // ⭐ Vietnamese e-wallet
         OTHER
     }
 
@@ -131,7 +134,7 @@ public class Payment {
 
     @Override
     public String toString() {
-        return String.format("Payment{id=%s, amount=%s, method=%s, status=%s, reference='%s'}", 
-                           id, amount, paymentMethod, paymentStatus, paymentReference);
+        return String.format("Payment{id=%s, amount=%s, method=%s, status=%s, reference='%s'}",
+                id, amount, paymentMethod, paymentStatus, paymentReference);
     }
 }

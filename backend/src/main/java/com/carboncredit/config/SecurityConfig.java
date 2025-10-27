@@ -42,6 +42,10 @@ public class SecurityConfig {
                         .requestMatchers(GET, "/api/listings").permitAll()
                         .requestMatchers(GET, "/api/listings/**").permitAll()
                         .requestMatchers("/api/users/register", "api/users/login").permitAll()
+                        .requestMatchers("/api/wallets/vnpay-return").permitAll() // Allow VNPAY callback
+                        .requestMatchers("/api/wallets/momo-return").permitAll() // ← Allow MoMo callback
+                        .requestMatchers("/api/wallets/momo-notify").permitAll()
+                        .requestMatchers("/api/wallets/test-complete-momo").permitAll()
                         .requestMatchers("/api/users/debug/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
@@ -64,6 +68,5 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
 
 }

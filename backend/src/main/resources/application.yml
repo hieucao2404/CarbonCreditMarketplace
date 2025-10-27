@@ -35,3 +35,28 @@ logging:
   level:
     org.springframework.security: DEBUG
     com.carboncredit: DEBUG
+
+# VNPAY Sandbox Configuration
+# Replace with YOUR actual credentials from email
+vnpay:
+  tmn-code: H3G0BBWR
+  hash-secret: 8X0PCRCIKQI55D7XP7BVFTUCAD384US7
+  api-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: https://jase-unweathered-hildegard.ngrok-free.dev/api/wallets/vnpay-return 
+  version: 2.1.0
+  command: pay
+  currency-code: VND
+
+
+momo:
+  partner-code: MOMOBKUN20180529
+  access-key: klm05TvNBzhg7h7j
+  secret-key: at67qH6mk8w5Y1nAyMoYKMWACiEi2bsa
+  api-endpoint: https://test-payment.momo.vn/v2/gateway/api/create
+  return-url: https://jase-unweathered-hildegard.ngrok-free.dev/api/wallets/momo-return
+  notify-url: https://jase-unweathered-hildegard.ngrok-free.dev/api/wallets/momo-notify
+  request-type: captureWallet
+
+currency:
+ usd-to-vnd-rate: 26330 # 1 USD = 26,330 VND
+
