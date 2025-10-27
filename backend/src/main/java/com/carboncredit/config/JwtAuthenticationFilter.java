@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         try {
-            //Extract username from JWT
+            //Extract us    ername from JWT
             username = jwtService.extractUsername(jwt);
 
             // If username is present and user is not already authenticated
