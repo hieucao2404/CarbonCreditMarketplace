@@ -290,3 +290,57 @@ SELECT
 FROM payments 
 ORDER BY created_at DESC 
 LIMIT 5;
+
+-- ============================================
+-- MIGRATION: Add CVA Listing Approval Feature
+-- Date: 2025-10-28
+-- ============================================
+
+-- 1. Add new statuses to credit_listings status check constraint
+-- First, drop the old constraint
+ALTER TABLE credit_listings DROP CONSTRAINT IF EXISTS credit_listings_status_check;
+
+-- Add new constraint with PENDING_APPROVAL and REJECTED
+ALTER TABLE credit_listings ADD CONSTRAINT credit_listings_status_check
+CHECK (status IN ('ACTIVE', 'PENDING_TRANSACTION', 'CLOSED', 'CANCELLED', 'PENDING_APPROVAL', 'REJECTED'));
+
+-- 2. Add CVA approval tracking columns to credit_listings
+ALTER TABLE credit_listings 
+ADD COLUMN IF NOT EXISTS approved_by_id UUID REFERENCES users(user_id),
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS approval_notes TEXT,
+ADD COLUMN IF NOT EXISTS rejected_by_id UUID REFERENCES users(user_id),
+ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- 3. Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_credit_listings_status ON credit_listings(status);
+CREATE INDEX IF NOT EXISTS idx_credit_listings_approved_by ON credit_listings(approved_by_id);
+CREATE INDEX IF NOT EXISTS idx_credit_listings_rejected_by ON credit_listings(rejected_by_id);
+
+-- 5. Verify the changes
+SELECT 
+    column_name, 
+    data_type, 
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'credit_listings'
+AND column_name IN ('approved_by_id', 'approved_at', 'approval_notes', 'rejected_by_id', 'rejected_at', 'rejection_reason')
+ORDER BY ordinal_position;
+
+SELECT listing_id, status, price, created_at 
+FROM credit_listings 
+WHERE status = 'PENDING_APPROVAL'
+ORDER BY created_at DESC;
+
+-- Delete duplicates (keep the oldest one)
+DELETE FROM credit_listings 
+WHERE listing_id IN (
+  SELECT listing_id FROM (
+    SELECT listing_id, 
+           ROW_NUMBER() OVER (PARTITION BY credit_id ORDER BY created_at) as rn
+    FROM credit_listings 
+    WHERE status = 'PENDING_APPROVAL'
+  ) sub 
+  WHERE rn > 1
+);

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -13,11 +14,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.carboncredit.dto.ApiResponse;
+import com.carboncredit.dto.CreditListingDTO;
 import com.carboncredit.dto.JourneyDataDTO;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.ResourceNotFoundException;
 import com.carboncredit.service.CVAService;
+import com.carboncredit.service.CreditListingService;
+import com.carboncredit.service.JourneyDataService;
 import com.carboncredit.service.UserService;
 
 import jakarta.validation.constraints.NotBlank;
@@ -50,6 +54,8 @@ public class CVAController {
 
     private final CVAService cvaService;
     private final UserService userService;
+    private final JourneyDataService journeyDataService;
+    private final CreditListingService creditListingService;
 
     /**
      * Get all pending journey for CVA reviews
@@ -81,7 +87,7 @@ public class CVAController {
     public ResponseEntity<ApiResponse<JourneyDataDTO>> getJourneyForReview(@PathVariable UUID id) {
         try {
             JourneyData journey = cvaService.getJourneyDataForView(id);
-            return ResponseEntity.ok(ApiResponse.success(new JourneyDataDTO()));
+            return ResponseEntity.ok(ApiResponse.success(new JourneyDataDTO(journey)));
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(404).body(ApiResponse.error("Journey not found: " + id));
         } catch (Exception e) {
@@ -132,7 +138,7 @@ public class CVAController {
 
             JourneyData rejectedJourney = cvaService.rejectJourneyByCVA(id, cva, reason);
             
-            log.warn("CVA P{ rejected journey {}. Reason: {}", cva.getUsername());
+            log.warn("CVA {} rejected journey {}. Reason: {}", cva.getUsername());
             
             return ResponseEntity.ok(ApiResponse.success("Journey rejected. Reason: " + reason, new JourneyDataDTO(rejectedJourney)));
         } catch (ResourceNotFoundException e) {
@@ -142,6 +148,95 @@ public class CVAController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to reject journey: " + e.getMessage()));
         }
         
+    }
+
+    // Add these methods to CVAController:
+
+@GetMapping("/pending-listings")
+@PreAuthorize("hasRole('CVA')")
+public ResponseEntity<ApiResponse<Page<CreditListingDTO>>> getPendingListings(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+    try {
+        Page<CreditListingDTO> listings = creditListingService.getPendingListings(page, size);
+        return ResponseEntity.ok(ApiResponse.success(listings));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+    }
+}
+
+@PostMapping("/listing/{id}/approve")
+@PreAuthorize("hasRole('CVA')")
+public ResponseEntity<ApiResponse<CreditListingDTO>> approveListing(
+        @PathVariable UUID id,
+        Authentication authentication) {
+    try {
+        User cva = userService.findByUsername(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("CVA not found"));
+        CreditListingDTO approved = creditListingService.approveListing(id, cva);
+        return ResponseEntity.ok(ApiResponse.success("Listing approved", approved));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+    }
+}
+
+@PostMapping("/listing/{id}/reject")
+@PreAuthorize("hasRole('CVA')")
+public ResponseEntity<ApiResponse<CreditListingDTO>> rejectListing(
+        @PathVariable UUID id,
+        @RequestParam String reason,
+        Authentication authentication) {
+    try {
+        User cva = userService.findByUsername(authentication.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("CVA not found"));
+        CreditListingDTO rejected = creditListingService.rejectListing(id, cva, reason);
+        return ResponseEntity.ok(ApiResponse.success("Listing rejected", rejected));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+    }
+}
+
+
+    /**
+     * Get all journeys for a specific user (by username).
+     * For CVA review/auditing purposes.
+     * * @param username The username of the user whose journeys are to be retrieved.
+     */
+    @GetMapping("/user/{username}/journeys")
+    @PreAuthorize("hasRole('CVA')")
+    public ResponseEntity<ApiResponse<List<JourneyDataDTO>>> getJourneysByUsername(
+            @PathVariable String username,
+            Authentication authentication) {
+        
+        try {
+            // 1. Find the user specified in the path
+            //    We use the controller's injected userService
+            User targetUser = userService.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+            // 2. Call the service to get that user's journeys
+            //    (You will need to add this 'getJourneysForUser' method to CVAService)
+            List<JourneyData> journeys = journeyDataService.getJourneysByUsername(targetUser.getUsername());
+            
+            List<JourneyDataDTO> dtos = journeys.stream()
+                    .map(JourneyDataDTO::new)
+                    .collect(Collectors.toList());
+
+            log.info("CVA {} retrieved {} journeys for user {}", 
+                        authentication.getName(), dtos.size(), username);
+
+            return ResponseEntity.ok(ApiResponse.success(dtos));
+            
+        } catch (ResourceNotFoundException e) {
+            log.warn("CVA {} failed to find journeys for user {}: {}", 
+                        authentication.getName(), username, e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error fetching journeys for user {}: {}", username, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to fetch journeys for user " + username));
+        }
     }
     
 

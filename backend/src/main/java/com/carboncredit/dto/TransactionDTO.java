@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.carboncredit.entity.Transaction;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,16 +18,21 @@ public class TransactionDTO {
     private UserDTO seller;
     private CarbonCreditDTO credit;
     private CreditListingDTO listing;
-    private BigDecimal amount;
+    
+    // ✅ ADD THESE FIELDS
+    private BigDecimal carbonCreditsAmount; // Amount of credits transferred
+    private BigDecimal totalPrice; // Total price paid
+    private BigDecimal amount; // Keep for backward compatibility
+    
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
 
-    // Constructor from Transaction entity - prevents circular references
+    // Constructor from Transaction entity
     public TransactionDTO(Transaction transaction) {
         this.id = transaction.getId();
         
-        // Only include basic user info to prevent circular references
+        // User info
         if (transaction.getBuyer() != null) {
             this.buyer = new UserDTO();
             this.buyer.setId(transaction.getBuyer().getId());
@@ -43,18 +47,33 @@ public class TransactionDTO {
             this.seller.setRole(transaction.getSeller().getRole());
         }
         
-        // Include basic credit info without deep relationships
+        // Credit info (basic to avoid circular references)
         if (transaction.getCredit() != null) {
-            this.credit = new CarbonCreditDTO(transaction.getCredit()); // Use lightweight constructor
+            this.credit = new CarbonCreditDTO();
+            this.credit.setCreditId(transaction.getCredit().getId());
+            this.credit.setCreditAmount(transaction.getCredit().getCreditAmount());
         }
         
-        // Include basic listing info without deep relationships
+        // Listing info (basic to avoid circular references)
         if (transaction.getListing() != null) {
-            this.listing = new CreditListingDTO(transaction.getListing()); // Use lightweight constructor
+            this.listing = new CreditListingDTO();
+            this.listing.setListingId(transaction.getListing().getId());
+            this.listing.setPrice(transaction.getListing().getPrice());
+        }
+        
+        // ✅ Calculate credit amount and total price from listing
+        if (transaction.getListing() != null && transaction.getCredit() != null) {
+            this.carbonCreditsAmount = transaction.getCredit().getCreditAmount();
+            this.totalPrice = transaction.getListing().getPrice()
+                .multiply(this.carbonCreditsAmount);
+        } else if (transaction.getCredit() != null) {
+            this.carbonCreditsAmount = transaction.getCredit().getCreditAmount();
         }
         
         this.amount = transaction.getAmount();
-        this.status = transaction.getStatus() != null ? transaction.getStatus().toString() : null;
+        this.status = transaction.getStatus() != null 
+            ? transaction.getStatus().toString() 
+            : null;
         this.createdAt = transaction.getCreatedAt();
         this.completedAt = transaction.getCompletedAt();
     }

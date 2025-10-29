@@ -75,239 +75,230 @@ public class WalletController {
     @Autowired
     private PaymentRepository paymentRepository;
 
-// ADD THIS TO YOUR WALLETCONTROLLER.JAVA
+    // ADD THIS TO YOUR WALLETCONTROLLER.JAVA
 
-// First, add MoMoService and MoMoConfig to existing @Autowired fields:
-@Autowired
-private MoMoService momoService;
+    // First, add MoMoService and MoMoConfig to existing @Autowired fields:
+    @Autowired
+    private MoMoService momoService;
 
-@Autowired
-private MoMoConfig momoConfig;
+    @Autowired
+    private MoMoConfig momoConfig;
 
-/**
- * 🧪 TEST - Manually complete MoMo payment (bypasses signature check)
- */
-@GetMapping("/test-complete-momo")
-public ResponseEntity<Map<String, Object>> testCompleteMoMo(@RequestParam String orderId) {
-    log.info("🧪 TEST: Manually completing MoMo payment");
-    log.info("   Order ID: {}", orderId);
+    /**
+     * 🧪 TEST - Manually complete MoMo payment (bypasses signature check)
+     */
+    @GetMapping("/test-complete-momo")
+    public ResponseEntity<Map<String, Object>> testCompleteMoMo(@RequestParam String orderId) {
+        log.info("🧪 TEST: Manually completing MoMo payment");
+        log.info("   Order ID: {}", orderId);
 
-    try {
-        // Find payment by transaction reference  
-        Optional<Payment> paymentOpt = paymentRepository.findByPaymentReference(orderId);
-        
-        if (paymentOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("success", false, "message", "Payment not found for orderId: " + orderId));
-        }
-
-        Payment payment = paymentOpt.get();
-        User user = payment.getPayer();
-
-        // Check if already completed
-        if (payment.getPaymentStatus() == Payment.PaymentStatus.COMPLETED) {
-            return ResponseEntity.ok(Map.of(
-                "success", false,
-                "message", "Payment already completed",
-                "paymentId", payment.getId()
-            ));
-        }
-
-        // Update payment status to COMPLETED
-        payment.setPaymentStatus(Payment.PaymentStatus.COMPLETED);
-        paymentRepository.save(payment);
-        log.info("✅ Payment status updated to COMPLETED");
-
-        // Update wallet balance
-        walletService.updateCashBalance(user.getId(), payment.getAmount());
-        log.info("✅ Wallet balance updated: +${} USD", payment.getAmount());
-
-        return ResponseEntity.ok(Map.of(
-            "success", true,
-            "message", "🧪 TEST MODE - MoMo payment completed successfully",
-            "paymentId", payment.getId(),
-            "orderId", orderId,
-            "amountUsd", payment.getAmount(),
-            "status", "COMPLETED",
-            "user", user.getUsername()
-        ));
-
-    } catch (Exception e) {
-        log.error("❌ Error completing test MoMo payment", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Map.of("success", false, "message", "Error: " + e.getMessage()));
-    }
-}
-
-
-/**
- * Create MoMo payment
- */
-@PostMapping("/deposit/momo")
-public ResponseEntity<Map<String, Object>> depositViaMoMo(
-        @RequestBody @Valid VNPayDepositRequest request,
-        Authentication authentication,
-        HttpServletRequest httpRequest) {
-    
-    try {
-        User user = userService.findByUsername(authentication.getName())
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        log.info("User {} initiating MoMo deposit", user.getUsername());
-        log.info("Amount: ${} USD", request.getAmountUsd());
-
-        // Convert USD to VND
-        BigDecimal amountVnd = currencyService.convertUsdToVnd(request.getAmountUsd());
-        BigDecimal exchangeRate = currencyService.getExchangeRate();
-        log.info("Converted: {} VND (rate: {})", amountVnd, exchangeRate);
-
-        // Generate unique transaction reference
-        String txnRef = "DEP_" + System.currentTimeMillis();
-
-        // Create payment record
-        Payment payment = new Payment();
-        payment.setPayer(user);
-        payment.setPayee(null);
-        payment.setAmount(request.getAmountUsd());
-        payment.setPaymentMethod(Payment.PaymentMethod.BANK_TRANSFER);
-        payment.setPaymentStatus(Payment.PaymentStatus.PENDING);
-        payment.setPaymentReference(txnRef);
-        payment = paymentRepository.save(payment);
-
-        log.info("   Payment record created: {}", payment.getId());
-
-        // Create MoMo payment URL
-        String paymentUrl = momoService.createPayment(
-            user.getId(),
-            request.getAmountUsd(),
-            txnRef
-        );
-
-        log.info("✅ MoMo payment URL generated successfully");
-
-        return ResponseEntity.ok(Map.of(
-            "success", true,
-            "paymentUrl", paymentUrl,
-            "paymentId", payment.getId(),
-            "orderId", txnRef,
-            "amountUsd", request.getAmountUsd(),
-            "amountVnd", amountVnd.longValue(),
-            "exchangeRate", exchangeRate,
-            "message", String.format("You will pay %,d VND (≈ $%.2f USD)", 
-                amountVnd.longValue(), request.getAmountUsd())
-        ));
-
-    } catch (Exception e) {
-        log.error("❌ Error creating MoMo payment", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Map.of("success", false, "message", "Payment creation failed: " + e.getMessage()));
-    }
-}
-
-/**
- * MoMo return callback (user redirected here after payment)
- */
-@GetMapping("/momo-return")
-public ResponseEntity<Map<String, Object>> momoReturn(@RequestParam Map<String, String> params) {
-    log.info("🔄 MoMo callback received");
-    log.info("Result Code: {}", params.get("resultCode"));
-    log.info("Order ID: {}", params.get("orderId"));
-    log.info("Amount: {} VND", params.get("amount"));
-
-    // Process same as notify
-    return momoNotify(params);
-}
-
-/**
- * MoMo IPN callback (server-to-server notification)
- */
-@PostMapping("/momo-notify")
-public ResponseEntity<Map<String, Object>> momoNotify(@RequestParam Map<String, String> params) {
-    log.info("🔔 MoMo IPN notification received");
-    
-    try {
-        String resultCode = params.get("resultCode");
-        String orderId = params.get("orderId"); // This is our txnRef
-        String amount = params.get("amount");
-        String signature = params.get("signature");
-
-        // Build raw signature for verification
-        String rawSignature = String.format(
-            "accessKey=%s&amount=%s&extraData=%s&message=%s&orderId=%s&orderInfo=%s&orderType=%s&partnerCode=%s&payType=%s&requestId=%s&responseTime=%s&resultCode=%s&transId=%s",
-            momoConfig.getAccessKey(),
-            amount,
-            params.getOrDefault("extraData", ""),
-            params.getOrDefault("message", ""),
-            orderId,
-            params.getOrDefault("orderInfo", ""),
-            params.getOrDefault("orderType", ""),
-            momoConfig.getPartnerCode(),
-            params.getOrDefault("payType", ""),
-            params.getOrDefault("requestId", ""),
-            params.getOrDefault("responseTime", ""),
-            resultCode,
-            params.getOrDefault("transId", "")
-        );
-
-        // Verify signature
-        if (!momoService.verifySignature(rawSignature, signature)) {
-            log.warn("❌ Invalid MoMo signature - possible tampering");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("message", "Invalid signature"));
-        }
-
-        // Check if payment was successful (resultCode "0" means success)
-        if ("0".equals(resultCode)) {
-            log.info("✅ MoMo payment successful");
-
-            // Find payment record
+        try {
+            // Find payment by transaction reference
             Optional<Payment> paymentOpt = paymentRepository.findByPaymentReference(orderId);
-            if (paymentOpt.isPresent()) {
-                Payment payment = paymentOpt.get();
-                User user = payment.getPayer();
 
-                // Update payment status
-                payment.setPaymentStatus(Payment.PaymentStatus.COMPLETED);
-                payment.setPaymentReference(params.get("transId")); // MoMo transaction ID
-                paymentRepository.save(payment);
-                log.info("   Payment record updated: {}", payment.getId());
+            if (paymentOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Payment not found for orderId: " + orderId));
+            }
 
-                // Update wallet balance
-                walletService.updateCashBalance(user.getId(), payment.getAmount());
-                log.info("✅ Wallet updated for user: {}", user.getUsername());
-                log.info("   Added: ${} USD", payment.getAmount());
+            Payment payment = paymentOpt.get();
+            User user = payment.getPayer();
+
+            // Check if already completed
+            if (payment.getPaymentStatus() == Payment.PaymentStatus.COMPLETED) {
+                return ResponseEntity.ok(Map.of(
+                        "success", false,
+                        "message", "Payment already completed",
+                        "paymentId", payment.getId()));
+            }
+
+            // Update payment status to COMPLETED
+            payment.setPaymentStatus(Payment.PaymentStatus.COMPLETED);
+            paymentRepository.save(payment);
+            log.info("✅ Payment status updated to COMPLETED");
+
+            // Update wallet balance
+            walletService.updateCashBalance(user.getId(), payment.getAmount());
+            log.info("✅ Wallet balance updated: +${} USD", payment.getAmount());
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "🧪 TEST MODE - MoMo payment completed successfully",
+                    "paymentId", payment.getId(),
+                    "orderId", orderId,
+                    "amountUsd", payment.getAmount(),
+                    "status", "COMPLETED",
+                    "user", user.getUsername()));
+
+        } catch (Exception e) {
+            log.error("❌ Error completing test MoMo payment", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Create MoMo payment
+     */
+    @PostMapping("/deposit/momo")
+    public ResponseEntity<Map<String, Object>> depositViaMoMo(
+            @RequestBody @Valid VNPayDepositRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        try {
+            User user = userService.findByUsername(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            log.info("User {} initiating MoMo deposit", user.getUsername());
+            log.info("Amount: ${} USD", request.getAmountUsd());
+
+            // Convert USD to VND
+            BigDecimal amountVnd = currencyService.convertUsdToVnd(request.getAmountUsd());
+            BigDecimal exchangeRate = currencyService.getExchangeRate();
+            log.info("Converted: {} VND (rate: {})", amountVnd, exchangeRate);
+
+            // Generate unique transaction reference
+            String txnRef = "DEP_" + System.currentTimeMillis();
+
+            // Create payment record
+            Payment payment = new Payment();
+            payment.setPayer(user);
+            payment.setPayee(null);
+            payment.setAmount(request.getAmountUsd());
+            payment.setPaymentMethod(Payment.PaymentMethod.BANK_TRANSFER);
+            payment.setPaymentStatus(Payment.PaymentStatus.PENDING);
+            payment.setPaymentReference(txnRef);
+            payment = paymentRepository.save(payment);
+
+            log.info("   Payment record created: {}", payment.getId());
+
+            // Create MoMo payment URL
+            String paymentUrl = momoService.createPayment(
+                    user.getId(),
+                    request.getAmountUsd(),
+                    txnRef);
+
+            log.info("✅ MoMo payment URL generated successfully");
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "paymentUrl", paymentUrl,
+                    "paymentId", payment.getId(),
+                    "orderId", txnRef,
+                    "amountUsd", request.getAmountUsd(),
+                    "amountVnd", amountVnd.longValue(),
+                    "exchangeRate", exchangeRate,
+                    "message", String.format("You will pay %,d VND (≈ $%.2f USD)",
+                            amountVnd.longValue(), request.getAmountUsd())));
+
+        } catch (Exception e) {
+            log.error("❌ Error creating MoMo payment", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Payment creation failed: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * MoMo return callback (user redirected here after payment)
+     */
+    @GetMapping("/momo-return")
+    public ResponseEntity<Map<String, Object>> momoReturn(@RequestParam Map<String, String> params) {
+        log.info("🔄 MoMo callback received");
+        log.info("Result Code: {}", params.get("resultCode"));
+        log.info("Order ID: {}", params.get("orderId"));
+        log.info("Amount: {} VND", params.get("amount"));
+
+        // Process same as notify
+        return momoNotify(params);
+    }
+
+    /**
+     * MoMo IPN callback (server-to-server notification)
+     */
+    @PostMapping("/momo-notify")
+    public ResponseEntity<Map<String, Object>> momoNotify(@RequestParam Map<String, String> params) {
+        log.info("🔔 MoMo IPN notification received");
+
+        try {
+            String resultCode = params.get("resultCode");
+            String orderId = params.get("orderId"); // This is our txnRef
+            String amount = params.get("amount");
+            String signature = params.get("signature");
+
+            // Build raw signature for verification
+            String rawSignature = String.format(
+                    "accessKey=%s&amount=%s&extraData=%s&message=%s&orderId=%s&orderInfo=%s&orderType=%s&partnerCode=%s&payType=%s&requestId=%s&responseTime=%s&resultCode=%s&transId=%s",
+                    momoConfig.getAccessKey(),
+                    amount,
+                    params.getOrDefault("extraData", ""),
+                    params.getOrDefault("message", ""),
+                    orderId,
+                    params.getOrDefault("orderInfo", ""),
+                    params.getOrDefault("orderType", ""),
+                    momoConfig.getPartnerCode(),
+                    params.getOrDefault("payType", ""),
+                    params.getOrDefault("requestId", ""),
+                    params.getOrDefault("responseTime", ""),
+                    resultCode,
+                    params.getOrDefault("transId", ""));
+
+            // Verify signature
+            if (!momoService.verifySignature(rawSignature, signature)) {
+                log.warn("❌ Invalid MoMo signature - possible tampering");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "Invalid signature"));
+            }
+
+            // Check if payment was successful (resultCode "0" means success)
+            if ("0".equals(resultCode)) {
+                log.info("✅ MoMo payment successful");
+
+                // Find payment record
+                Optional<Payment> paymentOpt = paymentRepository.findByPaymentReference(orderId);
+                if (paymentOpt.isPresent()) {
+                    Payment payment = paymentOpt.get();
+                    User user = payment.getPayer();
+
+                    // Update payment status
+                    payment.setPaymentStatus(Payment.PaymentStatus.COMPLETED);
+                    payment.setPaymentReference(params.get("transId")); // MoMo transaction ID
+                    paymentRepository.save(payment);
+                    log.info("   Payment record updated: {}", payment.getId());
+
+                    // Update wallet balance
+                    walletService.updateCashBalance(user.getId(), payment.getAmount());
+                    log.info("✅ Wallet updated for user: {}", user.getUsername());
+                    log.info("   Added: ${} USD", payment.getAmount());
+
+                    return ResponseEntity.ok(Map.of(
+                            "message", "Payment successful",
+                            "orderId", orderId));
+                } else {
+                    log.error("❌ Payment record not found for orderId: {}", orderId);
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("message", "Payment not found"));
+                }
+            } else {
+                log.warn("⚠️ MoMo payment failed. Result code: {}", resultCode);
+
+                // Update payment status to failed
+                paymentRepository.findByPaymentReference(orderId).ifPresent(payment -> {
+                    payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
+                    paymentRepository.save(payment);
+                });
 
                 return ResponseEntity.ok(Map.of(
-                    "message", "Payment successful",
-                    "orderId", orderId
-                ));
-            } else {
-                log.error("❌ Payment record not found for orderId: {}", orderId);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Payment not found"));
+                        "message", "Payment failed",
+                        "resultCode", resultCode));
             }
-        } else {
-            log.warn("⚠️ MoMo payment failed. Result code: {}", resultCode);
-            
-            // Update payment status to failed
-            paymentRepository.findByPaymentReference(orderId).ifPresent(payment -> {
-                payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
-                paymentRepository.save(payment);
-            });
 
-            return ResponseEntity.ok(Map.of(
-                "message", "Payment failed",
-                "resultCode", resultCode
-            ));
+        } catch (Exception e) {
+            log.error("❌ Error processing MoMo callback", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Callback processing failed: " + e.getMessage()));
         }
-
-    } catch (Exception e) {
-        log.error("❌ Error processing MoMo callback", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(Map.of("message", "Callback processing failed: " + e.getMessage()));
     }
-}
-
 
     /**
      * 
@@ -513,19 +504,30 @@ public ResponseEntity<Map<String, Object>> momoNotify(@RequestParam Map<String, 
 
     // Get current user's wallet information
     @GetMapping("/my-wallet")
-    public ResponseEntity<WalletResponse> getMyWallet(Authentication authentication) {
+    public ResponseEntity<ApiResponse<WalletResponse>> getMyWallet(Authentication authentication) {
+        log.info("📥 GET /api/wallets/my-wallet called by: {}", authentication.getName());
         try {
             User user = userService.findByUsername(authentication.getName())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", authentication.getName()));
 
             Wallet wallet = walletService.getOrCreateWallet(user);
             WalletResponse response = mapToWalletResponse(wallet);
 
-            log.info("Wallet information retrieved for user: {}", user.getUsername());
-            return ResponseEntity.ok(response);
+            log.info("✅ Wallet information retrieved for user: {}", user.getUsername());
+            log.info("   Credit Balance: {}", response.getCreditBalance());
+            log.info("   Cash Balance: {}", response.getCashBalance());
+
+            // ✅ Wrap in ApiResponse for consistency
+            return ResponseEntity.ok(ApiResponse.success(response));
+
+        } catch (ResourceNotFoundException e) {
+            log.error("❌ User not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            log.error("Error retrieving wallet information: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            log.error("❌ Error retrieving wallet: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve wallet: " + e.getMessage()));
         }
     }
 

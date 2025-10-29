@@ -1,6 +1,5 @@
 package com.carboncredit.repository;
 
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +26,10 @@ public interface CreditListingRepository extends JpaRepository<CreditListing, UU
         // ============ FIND BY STATUS ===========
         // find all active listings
         List<CreditListing> findByStatus(ListingStatus status);
+
+        // Change userId to id (the actual field name in User entity)
+        @Query("SELECT l FROM CreditListing l WHERE l.credit.user.id = :userId ORDER BY l.createdAt DESC")
+        Page<CreditListing> findAllByUserId(@Param("userId") UUID userId, Pageable pageable);
 
         // fund active lisitng with pagination
         Page<CreditListing> findByStatus(ListingStatus status, Pageable pageable);

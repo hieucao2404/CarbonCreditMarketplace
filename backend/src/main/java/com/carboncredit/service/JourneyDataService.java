@@ -15,6 +15,7 @@ import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.JourneyData;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
+import com.carboncredit.exception.ResourceNotFoundException;
 import com.carboncredit.exception.UnauthorizedOperationException;
 import com.carboncredit.repository.CarbonCreditRepository;
 import com.carboncredit.repository.JourneyDataRepository;
@@ -34,9 +35,20 @@ public class JourneyDataService {
     private final ValidationService validationService;
     private final CarbonCreditRepository carbonCreditRepository;
     private final AuditService auditService;
+    private final UserService userService;
 
     private void validateJourneyData(JourneyData journeyData) {
         validationService.validateJourneyData(journeyData);
+    }
+
+    public List<JourneyData> getJourneysByUsername(String username) {
+        // 1. Find the user by their username
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+
+        // 2. Call the repository method
+        log.info("Fetching all journeys for user {}", user.getUsername());
+        return journeyDataRepository.findByUser(user);
     }
 
     // Creatate and save new journey with validation
@@ -191,11 +203,11 @@ public class JourneyDataService {
                     "delete");
         }
 
-        // Check if journey can be deleted
-        if (journey.getCarbonCredit() != null) {
-            throw new BusinessOperationException("journeyData", "delete",
-                    "cannot delete journey that has carbon credits");
-        }
+        // // Check if journey can be deleted
+        // if (journey.getCarbonCredit() != null) {
+        //     throw new BusinessOperationException("journeyData", "delete",
+        //             "cannot delete journey that has carbon credits");
+        // }
 
         journeyDataRepository.delete(journey);
         log.info("Journey {} deleted successfully", journeyId);

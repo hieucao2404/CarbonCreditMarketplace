@@ -45,31 +45,87 @@ public class CreditListingService {
      * Creates a fixed-price listing and returns its DTO
      */
     public CreditListingDTO createFixedPriceListing(UUID creditId, User owner, BigDecimal price) {
-        log.info("Creating fixed-price listing for credit {} by user {} at price {}", creditId, owner.getUsername(),
-                price);
+        log.info("Creating fixed-price listing for credit {} by user {} at price {}",
+                creditId, owner.getUsername(), price);
 
         CarbonCredit credit = carbonCreditRepository.findById(creditId)
-                .orElseThrow(() -> new EntityNotFoundException("Carbon Credit not found" + creditId));
+                .orElseThrow(() -> new EntityNotFoundException("Carbon Credit not found: " + creditId));
 
         validationService.validateListingCreation(credit, owner, price);
 
         Optional<CreditListing> existingListing = creditListingRepository.findByCredit(credit);
-        if (existingListing.isPresent() && existingListing.get().getStatus() == ListingStatus.ACTIVE) {
-            throw new BusinessOperationException("Credit is already actively listed");
-        }
-        CreditListing listing = CreditListing.builder().credit(credit).listingType(ListingType.FIXED).price(price)
-                .status(ListingStatus.ACTIVE).build();
+        if (existingListing.isPresent()) {
+            CreditListing existing = existingListing.get();
+            ListingStatus status = existing.getStatus();
 
-        credit.setStatus(CreditStatus.LISTED);
-        credit.setListedAt(LocalDateTime.now());
+            // Prevent duplicate if status is ACTIVE or PENDING_APPROVAL
+            if (status == ListingStatus.ACTIVE || status == ListingStatus.PENDING_APPROVAL) {
+                throw new BusinessOperationException(
+                        String.format("Credit already has a %s listing. Cannot create duplicate.",
+                                status.name().toLowerCase().replace("_", " ")));
+            }
+        }
+
+        // Create new listing with PENDING_APPROVAL status
+        CreditListing listing = CreditListing.builder()
+                .credit(credit)
+                .listingType(ListingType.FIXED)
+                .price(price)
+                .status(ListingStatus.PENDING_APPROVAL) // Not ACTIVE yet
+                .build();
+
+        // Don't update credit status until CVA approves
+        // credit.setStatus(CreditStatus.LISTED); // ❌ Don't do this yet
 
         CreditListing savedListing = creditListingRepository.save(listing);
-        carbonCreditRepository.save(credit); // Save credit status update
+        log.info("Fixed-price listing created with PENDING_APPROVAL status: {}", savedListing.getId());
 
-        log.info("Fixed-price listing created successfully: {}", savedListing.getId());
-
-        // Map to DTO before returning
         return DTOMapper.toCreditListingDTO(savedListing);
+    }
+
+    public CreditListingDTO approveListing(UUID listingId, User cva) {
+        CreditListing listing = findListingEntityById(listingId);
+
+        if (listing.getStatus() != ListingStatus.PENDING_APPROVAL) {
+            throw new BusinessOperationException("Only pending listings can be approved");
+        }
+
+        listing.setStatus(ListingStatus.ACTIVE);
+        listing.setApprovedBy(cva);
+        listing.setApprovedAt(LocalDateTime.now());
+
+        // NOW update credit status
+        CarbonCredit credit = listing.getCredit();
+        credit.setStatus(CreditStatus.LISTED);
+        credit.setListedAt(LocalDateTime.now());
+        carbonCreditRepository.save(credit);
+
+        return DTOMapper.toCreditListingDTO(creditListingRepository.save(listing));
+    }
+
+    public CreditListingDTO rejectListing(UUID listingId, User cva, String reason) {
+        CreditListing listing = findListingEntityById(listingId);
+
+        if (listing.getStatus() != ListingStatus.PENDING_APPROVAL) {
+            throw new BusinessOperationException("Only pending listings can be rejected");
+        }
+
+        listing.setStatus(ListingStatus.REJECTED);
+        listing.setRejectionReason(reason);
+
+        return DTOMapper.toCreditListingDTO(creditListingRepository.save(listing));
+    }
+
+    /**
+     * Get all pending listings for CVA review
+     */
+    @Transactional(readOnly = true)
+    public Page<CreditListingDTO> getPendingListings(int page, int size) {
+        validationService.validatePageParameters(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
+        Page<CreditListing> entityPage = creditListingRepository.findByStatus(
+                ListingStatus.PENDING_APPROVAL, pageable);
+        return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
     /**
@@ -146,6 +202,19 @@ public class CreditListingService {
         return entityPage.map(DTOMapper::toCreditListingDTO);
     }
 
+    @Transactional(readOnly = true)
+    public Page<CreditListingDTO> getListingsByUser(UUID userId, int page, int size) {
+        validationService.validatePageParameters(page, size);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        // Change this line - remove status filter
+        Page<CreditListing> entityPage = creditListingRepository
+                .findAllByUserId(userId, pageable); // Returns ALL statuses
+
+        return entityPage.map(DTOMapper::toCreditListingDTO);
+    }
+
     /**
      * Searched active listings by price range and returns a DTO page
      */
@@ -200,31 +269,38 @@ public class CreditListingService {
      * this method does not handle wallet transfer
      * belong to transaction service
      */
-    // public CreditListingDTO processPurchaseStatusUpdate(UUID listingId, User buyer){
-    //     log.info("Processing purchase status update for listing {} by buyer {}", listingId, buyer.getUsername());
+    // public CreditListingDTO processPurchaseStatusUpdate(UUID listingId, User
+    // buyer){
+    // log.info("Processing purchase status update for listing {} by buyer {}",
+    // listingId, buyer.getUsername());
 
-    //     CreditListing listing = findListingEntityById(listingId); // Use internal helper
+    // CreditListing listing = findListingEntityById(listingId); // Use internal
+    // helper
 
-    //     validationService.validatePurchase(listing, buyer); // Checks buyer != seller, etc.
+    // validationService.validatePurchase(listing, buyer); // Checks buyer !=
+    // seller, etc.
 
-    //     if (listing.getStatus() != ListingStatus.ACTIVE) {
-    //         throw new BusinessOperationException("Listing is no longer available for purchase. Status: " + listing.getStatus());
-    //     }
+    // if (listing.getStatus() != ListingStatus.ACTIVE) {
+    // throw new BusinessOperationException("Listing is no longer available for
+    // purchase. Status: " + listing.getStatus());
+    // }
 
-    //     // --- Update Statuses ---
-    //     listing.setStatus(ListingStatus.CLOSED); // Use CLOSED instead of SOLD for clarity
-    //     CarbonCredit credit = listing.getCredit();
-    //     credit.setStatus(CreditStatus.SOLD); // Credit is now SOLD
+    // // --- Update Statuses ---
+    // listing.setStatus(ListingStatus.CLOSED); // Use CLOSED instead of SOLD for
+    // clarity
+    // CarbonCredit credit = listing.getCredit();
+    // credit.setStatus(CreditStatus.SOLD); // Credit is now SOLD
 
-    //     // --- Save Updates ---
-    //     CreditListing updatedListing = creditListingRepository.save(listing);
-    //     carbonCreditRepository.save(credit);
+    // // --- Save Updates ---
+    // CreditListing updatedListing = creditListingRepository.save(listing);
+    // carbonCreditRepository.save(credit);
 
-    //     log.info("Purchase status updated: Listing {} marked CLOSED, Credit {} marked SOLD",
-    //         listing.getId(), credit.getId());
+    // log.info("Purchase status updated: Listing {} marked CLOSED, Credit {} marked
+    // SOLD",
+    // listing.getId(), credit.getId());
 
-    //     // Map to DTO
-    //     return DTOMapper.toCreditListingDTO(updatedListing);
+    // // Map to DTO
+    // return DTOMapper.toCreditListingDTO(updatedListing);
     // }
 
     // ==================== STATISTICS ====================
@@ -239,12 +315,9 @@ public class CreditListingService {
 
         // Use the DTO constructor
         return new MarketplaceStatsDTO(new MarketplaceStats(
-            totalActiveListings,
-            averagePrice
-        ));
+                totalActiveListings,
+                averagePrice));
     }
-    
-
 
     // ==================== HELPER METHODS ====================
 
@@ -254,9 +327,9 @@ public class CreditListingService {
     private CreditListing findListingEntityById(UUID listingId) {
         validationService.validateId(listingId, "CreditListing");
         return creditListingRepository.findById(listingId)
-            .orElseThrow(() -> new EntityNotFoundException("Credit listing not found: " + listingId));
+                .orElseThrow(() -> new EntityNotFoundException("Credit listing not found: " + listingId));
     }
-    
+
     /**
      * Finds a single listing by ID and returns its DTO.
      * (Needed for the Controller's GET /{id} endpoint)
@@ -268,7 +341,7 @@ public class CreditListingService {
     }
 
     private Sort createSort(String sortBy) {
-         // Using simplified sorting based on common needs
+        // Using simplified sorting based on common needs
         return switch (sortBy != null ? sortBy.toLowerCase() : "newest") {
             case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
@@ -289,7 +362,12 @@ public class CreditListingService {
             this.averagePrice = averagePrice;
         }
 
-        public long getTotalActiveListings() { return totalActiveListings; }
-        public BigDecimal getAveragePrice() { return averagePrice; }
+        public long getTotalActiveListings() {
+            return totalActiveListings;
+        }
+
+        public BigDecimal getAveragePrice() {
+            return averagePrice;
+        }
     }
 }

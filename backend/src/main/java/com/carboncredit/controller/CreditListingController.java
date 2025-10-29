@@ -57,6 +57,37 @@ public class CreditListingController {
     // ================================
     // EV_OWNER ENDPOINTS(Managing Listings)
     // ==============================
+
+    /**
+     * (EV_OWNER) Get ALL listings for the current user (ACTIVE, PENDING, REJECTED,
+     * etc.)
+     * This is for the user to manage their own listings
+     */
+    @GetMapping("/my-listings")
+    @PreAuthorize("hasRole('EV_OWNER')")
+    public ResponseEntity<ApiResponse<Page<CreditListingDTO>>> getMyListings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        try {
+            User owner = getCurrentUser(authentication);
+
+            // Call the service method that returns ALL statuses
+            Page<CreditListingDTO> dtoPage = listingService.getListingsByUser(owner.getId(), page, size);
+
+            return ResponseEntity.ok(ApiResponse.success(dtoPage));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Bad request for my listings: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error getting my listings", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("An unexpected error occurred"));
+        }
+    }
+
     /**
      * (EV_OWNER) create a new fixed-price listing for a verified credit
      */

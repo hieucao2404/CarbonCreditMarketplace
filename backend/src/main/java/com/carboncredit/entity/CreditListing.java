@@ -59,12 +59,30 @@ public class CreditListing {
     @OneToMany(mappedBy = "listing", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by_id") // ← Change to "approved_by_id"
+    private User approvedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rejected_by_id") // ← Add this too
+    private User rejectedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "approval_notes", length = 500)
+    private String approvalNotes;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     public enum ListingType {
         FIXED, AUCTION
     }
 
     public enum ListingStatus {
-        ACTIVE, CLOSED, CANCELLED, PENDING_TRANSACTION
+        ACTIVE, CLOSED, CANCELLED, PENDING_TRANSACTION, PENDING_APPROVAL, // ✅ Add this
+        REJECTED
     }
 
 }
