@@ -1,26 +1,65 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import SidebarBuyer from "../components/BuyerSidebar";
 import Header from "../components/BuyerHeader";
 import { Leaf, ShoppingCart } from "lucide-react";
+import axios from "axios";
 
 export default function BuyerDashboard() {
-  const recentPurchases = [
-    { amount: 25, buyer: "Nguyễn Văn A", price: "625,000 VNĐ", status: "Hoàn thành" },
-    { amount: 50, buyer: "Trần Thị B", price: "1,225,000 VNĐ", status: "Hoàn thành" },
-    { amount: 30, buyer: "Lê Văn C", price: "780,000 VNĐ", status: "Đang xử lý" },
-  ];
+  const [recentPurchases, setRecentPurchases] = useState([]);
+  const [availableCredits, setAvailableCredits] = useState([]);
 
-  const availableCredits = [
-    { amount: 50, location: "Hà Nội", price: "25,500 VNĐ/tCO₂", type: "Giá cố định" },
-    { amount: 75, location: "TP.HCM", price: "24,800 VNĐ/tCO₂", type: "Đấu giá" },
-    { amount: 30, location: "Đà Nẵng", price: "26,200 VNĐ/tCO₂", type: "Giá cố định" },
-    { amount: 100, location: "Hà Nội", price: "25,000 VNĐ/tCO₂", type: "Đấu giá" },
-  ];
+  // ✅ Gọi API danh sách listing (carbon credits có sẵn)
+  useEffect(() => {
+    axios
+      .get("/api/listings?page=0&size=5&sortBy=newest")
+      .then((res) => {
+        if (res.data?.data?.content) {
+          const mappedCredits = res.data.data.content.map((item) => ({
+            amount: item.creditAmount || 0,
+            location: item.location || "Không xác định",
+            price: item.price
+              ? `${item.price.toLocaleString()} VNĐ/tCO₂`
+              : "N/A",
+            type: item.listingType === "FIXED" ? "Giá cố định" : "Đấu giá",
+          }));
+          setAvailableCredits(mappedCredits);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Lỗi khi tải tín chỉ carbon:", err);
+      });
+  }, []);
+
+  // ✅ Gọi API lịch sử mua của Buyer (nếu backend có sẵn endpoint)
+  useEffect(() => {
+    axios
+      .get("/api/transactions/buyer-history?page=0&size=5")
+      .then((res) => {
+        if (res.data?.data?.content) {
+          const mappedPurchases = res.data.data.content.map((t) => ({
+            amount: t.creditAmount || 0,
+            buyer: t.sellerName || "Người bán ẩn danh",
+            price: t.totalPrice
+              ? `${t.totalPrice.toLocaleString()} VNĐ`
+              : "N/A",
+            status: t.status === "COMPLETED" ? "Hoàn thành" : "Đang xử lý",
+          }));
+          setRecentPurchases(mappedPurchases);
+        }
+      })
+      .catch((err) => {
+        console.warn("⚠️ Chưa có API buyer-history, đang dùng mock data");
+        setRecentPurchases([
+          { amount: 25, buyer: "Nguyễn Văn A", price: "625,000 VNĐ", status: "Hoàn thành" },
+          { amount: 50, buyer: "Trần Thị B", price: "1,225,000 VNĐ", status: "Hoàn thành" },
+          { amount: 30, buyer: "Lê Văn C", price: "780,000 VNĐ", status: "Đang xử lý" },
+        ]);
+      });
+  }, []);
 
   return (
     <div className="flex min-h-screen w-screen bg-[#F9FAFB] overflow-hidden">
-      <SidebarBuyer /> {/* ✅ sidebar riêng cho buyer */}
-
+      <SidebarBuyer />
       <div className="flex flex-col flex-1 min-h-screen w-full">
         <Header />
 
@@ -35,7 +74,7 @@ export default function BuyerDashboard() {
             </button>
           </div>
 
-          {/* 4 Stat cards */}
+          {/* 4 Stat cards (mock cứng) */}
           <div className="grid grid-cols-4 gap-6 mb-8">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
               <h2 className="text-gray-500 text-sm">Tín chỉ đã mua</h2>
@@ -50,7 +89,9 @@ export default function BuyerDashboard() {
               <p className="text-2xl font-semibold text-gray-800 mt-1">
                 31,250,000 VNĐ
               </p>
-              <p className="text-sm text-gray-500">Trung bình 24,990 VNĐ/tCO₂</p>
+              <p className="text-sm text-gray-500">
+                Trung bình 24,990 VNĐ/tCO₂
+              </p>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
@@ -82,33 +123,39 @@ export default function BuyerDashboard() {
               </p>
 
               <div className="space-y-3">
-                {recentPurchases.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center border-b border-gray-200 pb-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShoppingCart className="text-green-600 w-4 h-4" />
-                      <p className="text-gray-700 text-sm">
-                        {item.amount} tCO₂ - {item.buyer}
-                      </p>
+                {recentPurchases.length > 0 ? (
+                  recentPurchases.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center border-b border-gray-200 pb-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShoppingCart className="text-green-600 w-4 h-4" />
+                        <p className="text-gray-700 text-sm">
+                          {item.amount} tCO₂ - {item.buyer}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-700">
+                          {item.price}
+                        </p>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            item.status === "Hoàn thành"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-700">
-                        {item.price}
-                      </p>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          item.status === "Hoàn thành"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-400 text-sm">
+                    Không có giao dịch gần đây
+                  </p>
+                )}
               </div>
             </div>
 
@@ -122,27 +169,33 @@ export default function BuyerDashboard() {
               </p>
 
               <div className="space-y-3">
-                {availableCredits.map((credit, i) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center border-b border-gray-200 pb-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Leaf className="text-green-600 w-4 h-4" />
-                      <p className="text-gray-700 text-sm">
-                        {credit.amount} tCO₂ • {credit.location}
-                      </p>
+                {availableCredits.length > 0 ? (
+                  availableCredits.map((credit, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center border-b border-gray-200 pb-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Leaf className="text-green-600 w-4 h-4" />
+                        <p className="text-gray-700 text-sm">
+                          {credit.amount} tCO₂ • {credit.location}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-700">
+                          {credit.price}
+                        </p>
+                        <span className="text-xs bg-gray-800 text-white px-2 py-0.5 rounded-full">
+                          {credit.type}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-700">
-                        {credit.price}
-                      </p>
-                      <span className="text-xs bg-gray-800 text-white px-2 py-0.5 rounded-full">
-                        {credit.type}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-400 text-sm">
+                    Không có tín chỉ nào đang được bán
+                  </p>
+                )}
               </div>
             </div>
           </div>

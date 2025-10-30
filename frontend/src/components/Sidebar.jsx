@@ -18,7 +18,7 @@ export default function Sidebar() {
   const menu = [
     { icon: <Home size={18} />, text: "Tổng quan", path: "/home" },
     { icon: <Car size={18} />, text: "Quản lý xe điện", path: "/vehicles" },
-    { icon: <MapPin size={18} />, text: "Quản lý duong di", path: "/journeys" },
+    { icon: <MapPin size={18} />, text: "Quản lý đường đi", path: "/journeys" },
     { icon: <Wallet size={18} />, text: "Ví carbon", path: "/wallet" },
     { icon: <TrendingUp size={18} />, text: "Niêm yết tín chỉ", path: "/listing" },
     { icon: <FileText size={18} />, text: "Giao dịch", path: "/transactions" },

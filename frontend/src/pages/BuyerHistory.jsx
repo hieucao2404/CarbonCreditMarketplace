@@ -1,50 +1,62 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SidebarBuyer from "../components/BuyerSidebar";
 import Header from "../components/BuyerHeader";
 import { ShoppingCart, Download } from "lucide-react";
+import axios from "axios";
 
 export default function BuyerHistory() {
   const [activeTab, setActiveTab] = useState("purchase");
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const transactions = [
-    {
-      id: 1,
-      buyer: "Nguyễn Văn A",
-      amount: 25,
-      date: "2024-12-25",
-      price: "625,000 VND",
-      status: "Hoàn thành",
-    },
-    {
-      id: 2,
-      buyer: "Trần Thị B",
-      amount: 50,
-      date: "2024-12-23",
-      price: "1,225,000 VND",
-      status: "Hoàn thành",
-    },
-    {
-      id: 3,
-      buyer: "Lê Văn C",
-      amount: 30,
-      date: "2024-12-20",
-      price: "780,000 VND",
-      status: "Đang xử lý",
-    },
-  ];
-
+  // Tab “Chứng nhận” và “Thống kê” vẫn giữ nguyên
   const certificates = [
-    {
-      id: "CERT-001",
-      amount: 25,
-      date: "2024-12-25",
-    },
-    {
-      id: "CERT-002",
-      amount: 50,
-      date: "2024-12-23",
-    },
+    { id: "CERT-001", amount: 25, date: "2024-12-25" },
+    { id: "CERT-002", amount: 50, date: "2024-12-23" },
   ];
+
+  // 🚀 Gọi API khi vào tab “Giao dịch mua”
+  useEffect(() => {
+    if (activeTab === "purchase") {
+      const fetchTransactions = async () => {
+        setLoading(true);
+        try {
+          const token = localStorage.getItem("token"); // nếu có JWT
+          const res = await axios.get(
+            "http://localhost:8080/api/transactions/my-history?page=0&size=10",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          // API của bạn trả về dạng ApiResponse<Page<TransactionDTO>>
+          // nên cần truy cập res.data.data.content
+          const apiData = res.data?.data?.content || [];
+          const mappedData = apiData.map((t) => ({
+            id: t.id,
+            buyer: t.buyer?.fullName || "Người mua ẩn danh",
+            amount: t.amount,
+            date: t.date || t.createdAt?.substring(0, 10),
+            price: `${t.price?.toLocaleString("vi-VN")} VND`,
+            status:
+              t.status === "COMPLETED"
+                ? "Hoàn thành"
+                : t.status === "PENDING"
+                ? "Đang xử lý"
+                : "Đã hủy",
+          }));
+          setTransactions(mappedData);
+        } catch (err) {
+          console.error("Lỗi khi lấy danh sách giao dịch:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchTransactions();
+    }
+  }, [activeTab]);
 
   return (
     <div className="flex min-h-screen bg-[#F9FAFB]">
@@ -91,37 +103,45 @@ export default function BuyerHistory() {
             {/* Giao dịch mua */}
             {activeTab === "purchase" && (
               <div className="space-y-3">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3 bg-white hover:bg-gray-50 transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ShoppingCart size={18} className="text-blue-500" />
-                      <div>
+                {loading ? (
+                  <p className="text-gray-500 text-sm">Đang tải dữ liệu...</p>
+                ) : transactions.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    Hiện chưa có giao dịch nào.
+                  </p>
+                ) : (
+                  transactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3 bg-white hover:bg-gray-50 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ShoppingCart size={18} className="text-blue-500" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {tx.amount} tCO₂ từ {tx.buyer}
+                          </p>
+                          <p className="text-xs text-gray-500">{tx.date}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
                         <p className="text-sm font-medium text-gray-800">
-                          {tx.amount} tCO₂ từ {tx.buyer}
+                          {tx.price}
                         </p>
-                        <p className="text-xs text-gray-500">{tx.date}</p>
+                        <span
+                          className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                            tx.status === "Hoàn thành"
+                              ? "bg-black text-white"
+                              : "bg-gray-200 text-gray-700"
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <p className="text-sm font-medium text-gray-800">
-                        {tx.price}
-                      </p>
-                      <span
-                        className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                          tx.status === "Hoàn thành"
-                            ? "bg-black text-white"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
@@ -160,7 +180,9 @@ export default function BuyerHistory() {
                   </h3>
                   <p className="text-sm text-gray-700">
                     Tổng tín chỉ đã mua:{" "}
-                    <span className="font-medium text-gray-900">1250.5 tCO₂</span>
+                    <span className="font-medium text-gray-900">
+                      1250.5 tCO₂
+                    </span>
                   </p>
                   <p className="text-sm text-gray-700">
                     Tổng chi phí:{" "}
@@ -196,7 +218,9 @@ export default function BuyerHistory() {
                   </p>
                   <p className="text-sm text-gray-700">
                     Tương đương cây được trồng:{" "}
-                    <span className="font-medium text-green-600">56,273 cây</span>
+                    <span className="font-medium text-green-600">
+                      56,273 cây
+                    </span>
                   </p>
                 </div>
               </div>

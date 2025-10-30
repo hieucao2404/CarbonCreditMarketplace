@@ -1,61 +1,98 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import SidebarBuyer from "../components/BuyerSidebar";
 import Header from "../components/BuyerHeader";
-import { Search, MapPin, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { Search, MapPin, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function BuyerMarket() {
-  const credits = [
-    {
-      id: 1,
-      amount: 50,
-      seller: "Nguyễn Văn A",
-      source: "Tesla Model 3 - 2023",
-      location: "Hà Nội",
-      price: "25,500 VNĐ/tCO₂",
-      total: "1,275,000 VNĐ",
-      type: "Giá cố định",
-      date: "2024-12-28",
-      image: "/images/carbon1.png",
-    },
-    {
-      id: 2,
-      amount: 75,
-      seller: "Trần Thị B",
-      source: "BYD Seal - 2024",
-      location: "TP.HCM",
-      price: "24,800 VNĐ/tCO₂",
-      total: "1,860,000 VNĐ",
-      type: "Đấu giá",
-      endDate: "2024-12-30",
-      date: "2024-12-27",
-      image: "/images/carbon2.png",
-    },
-    {
-      id: 3,
-      amount: 30,
-      seller: "Lê Văn C",
-      source: "Tesla Model Y - 2023",
-      location: "Đà Nẵng",
-      price: "26,200 VNĐ/tCO₂",
-      total: "786,000 VNĐ",
-      type: "Giá cố định",
-      date: "2024-12-26",
-      image: "/images/carbon3.png",
-    },
-    {
-      id: 4,
-      amount: 100,
-      seller: "Phạm Thị D",
-      source: "VinFast VF8 - 2024",
-      location: "Hà Nội",
-      price: "25,000 VNĐ/tCO₂",
-      total: "2,500,000 VNĐ",
-      type: "Đấu giá",
-      endDate: "2024-12-29",
-      date: "2024-12-25",
-      image: "/images/carbon4.png",
-    },
-  ];
+  const [credits, setCredits] = useState([]);
+  const [filteredCredits, setFilteredCredits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [buyingId, setBuyingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [priceFilter, setPriceFilter] = useState("all");
+  const token = localStorage.getItem("token");
+
+  // ✅ Lấy danh sách credit đang mở bán từ API
+  useEffect(() => {
+    async function fetchCredits() {
+      try {
+        const res = await axios.get("http://localhost:8080/api/credits/marketplace", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = res.data.data || [];
+        setCredits(data);
+        setFilteredCredits(data);
+      } catch (error) {
+        console.error("Lỗi khi tải tín chỉ:", error);
+        alert("Không thể tải danh sách tín chỉ carbon!");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCredits();
+  }, [token]);
+
+  // ✅ Xử lý lọc và tìm kiếm frontend
+  useEffect(() => {
+    let result = [...credits];
+
+    // Lọc theo từ khóa
+    if (searchTerm.trim() !== "") {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.sellerName?.toLowerCase().includes(lowerSearch) ||
+          c.projectName?.toLowerCase().includes(lowerSearch) ||
+          c.location?.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    // Lọc theo giá
+    result = result.filter((c) => {
+      if (!c.price) return false;
+      if (priceFilter === "below25") return c.price < 25000;
+      if (priceFilter === "25to26") return c.price >= 25000 && c.price <= 26000;
+      if (priceFilter === "above26") return c.price > 26000;
+      return true; // all
+    });
+
+    setFilteredCredits(result);
+  }, [credits, searchTerm, priceFilter]);
+
+  // ✅ Gọi API mua ngay
+  async function handlePurchase(listingId) {
+    if (!window.confirm("Xác nhận mua tín chỉ này?")) return;
+    setBuyingId(listingId);
+    try {
+      const res = await axios.post(
+        `http://localhost:8080/api/transactions/purchase/${listingId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("🎉 Mua tín chỉ thành công!");
+      console.log(res.data);
+
+      // Cập nhật lại danh sách sau khi mua
+      const updated = await axios.get("http://localhost:8080/api/credits/marketplace", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCredits(updated.data.data || []);
+    } catch (err) {
+      console.error("Lỗi mua tín chỉ:", err);
+      alert("❌ Mua tín chỉ thất bại: " + (err.response?.data?.message || err.message));
+    } finally {
+      setBuyingId(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-700">
+        <Loader2 className="animate-spin w-5 h-5 mr-2" /> Đang tải danh sách tín chỉ...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F9FAFB]">
@@ -64,11 +101,8 @@ export default function BuyerMarket() {
         <Header />
 
         <main className="p-8 w-full">
-          {/* Title */}
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-800">
-              Thị trường tín chỉ carbon
-            </h1>
+            <h1 className="text-2xl font-semibold text-gray-800">Thị trường tín chỉ carbon</h1>
             <p className="text-gray-500 text-sm mt-1">
               Tìm kiếm và mua tín chỉ carbon từ chủ sở hữu xe điện
             </p>
@@ -76,101 +110,105 @@ export default function BuyerMarket() {
 
           {/* Search & Filters */}
           <div className="flex items-center gap-3 mb-6">
+            {/* Ô tìm kiếm */}
             <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 w-full">
               <Search size={18} className="text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm theo người bán, loại xe..."
+                placeholder="Tìm theo người bán, dự án, khu vực..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-transparent flex-1 px-2 text-sm outline-none"
               />
             </div>
-            <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700">
-              <option>Tất cả khu vực</option>
-              <option>Hà Nội</option>
-              <option>TP.HCM</option>
-              <option>Đà Nẵng</option>
-            </select>
-            <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700">
-              <option>Tất cả mức giá</option>
-              <option>Dưới 25,000 VNĐ</option>
-              <option>25,000–26,000 VNĐ</option>
-              <option>Trên 26,000 VNĐ</option>
+
+            {/* Lọc theo giá */}
+            <select
+              value={priceFilter}
+              onChange={(e) => setPriceFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700"
+            >
+              <option value="all">Tất cả mức giá</option>
+              <option value="below25">Dưới 25,000 VNĐ</option>
+              <option value="25to26">25,000–26,000 VNĐ</option>
+              <option value="above26">Trên 26,000 VNĐ</option>
             </select>
           </div>
 
-          {/* List */}
+          {/* Danh sách tín chỉ */}
           <div className="space-y-4">
-            {credits.map((credit) => (
-              <div
-                key={credit.id}
-                className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <img
-                    src={credit.image}
-                    alt="carbon"
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                      {credit.amount} tCO₂
-                      <CheckCircle2 className="text-green-600 w-4 h-4" />
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          credit.type === "Giá cố định"
-                            ? "bg-gray-800 text-white"
-                            : "bg-blue-100 text-blue-700"
+            {filteredCredits.length === 0 ? (
+              <p className="text-gray-600">Không tìm thấy tín chỉ phù hợp.</p>
+            ) : (
+              filteredCredits.map((credit) => (
+                <div
+                  key={credit.id}
+                  className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={credit.imageUrl || "/images/carbon-default.png"}
+                      alt="carbon"
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        {credit.quantity} tCO₂
+                        <CheckCircle2 className="text-green-600 w-4 h-4" />
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-800 text-white">
+                          Giá cố định
+                        </span>
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Người bán: {credit.sellerName || "Không rõ"}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Nguồn: {credit.projectName || "Không có"}
+                      </p>
+                      <div className="flex items-center text-sm text-gray-500 gap-4 mt-1">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={14} /> {credit.location || "—"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar size={14} /> {credit.listedDate?.slice(0, 10) || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-gray-800 font-semibold text-sm">
+                      {credit.price ? `${credit.price} VNĐ/tCO₂` : "—"}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Tổng: {credit.totalPrice ? `${credit.totalPrice} VNĐ` : "—"}
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <button className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-100">
+                        Chi tiết
+                      </button>
+                      <button
+                        onClick={() => handlePurchase(credit.id)}
+                        disabled={buyingId === credit.id}
+                        className={`px-3 py-1.5 rounded-lg text-sm text-white flex items-center justify-center gap-1 ${
+                          buyingId === credit.id
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-gray-900 hover:bg-gray-800"
                         }`}
                       >
-                        {credit.type}
-                      </span>
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      Người bán: {credit.seller}
-                    </p>
-                    <p className="text-sm text-gray-600">Nguồn: {credit.source}</p>
-                    <div className="flex items-center text-sm text-gray-500 gap-4 mt-1">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={14} />
-                        {credit.location}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={14} /> {credit.date}
-                      </span>
-                      {credit.endDate && (
-                        <span className="flex items-center gap-1 text-red-500">
-                          <Clock size={14} /> Kết thúc: {credit.endDate}
-                        </span>
-                      )}
+                        {buyingId === credit.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" /> Đang mua...
+                          </>
+                        ) : (
+                          "Mua ngay"
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                {/* Right Side */}
-                <div className="text-right">
-                  <p className="text-gray-800 font-semibold text-sm">
-                    {credit.price}
-                  </p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Tổng: {credit.total}
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <button className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-100">
-                      Chi tiết
-                    </button>
-                    <button
-                      className={`px-3 py-1.5 rounded-lg text-sm text-white ${
-                        credit.type === "Giá cố định"
-                          ? "bg-gray-900 hover:bg-gray-800"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                    >
-                      {credit.type === "Giá cố định" ? "Mua ngay" : "Đấu giá"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </main>
       </div>
