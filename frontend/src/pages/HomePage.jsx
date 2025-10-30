@@ -59,7 +59,7 @@ export default function HomePage() {
         setJourneys(sortedJourneys);
         console.log("✅ Journeys loaded:", sortedJourneys);
       }
-      
+
 
       // Handle Wallet - Better debugging
       if (walletRes.status === "fulfilled") {
@@ -90,7 +90,7 @@ export default function HomePage() {
       }
 
       //handle transactions
-      if(transactionsRes.status === "fulfilled" && transactionsRes.value?.success) {
+      if (transactionsRes.status === "fulfilled" && transactionsRes.value?.success) {
         const transactionData = transactionsRes.value.data.content || transactionsRes.value.data;
         setTransactions(Array.isArray(transactionData) ? transactionData : []);
         console.log("✅Transactions loaded:", transactionData);
@@ -113,17 +113,40 @@ export default function HomePage() {
   };
 
   const calculateRevenue = () => {
+    console.log("💰 All Transactions:", transactions);
+
     if (!transactions || transactions.length === 0) return { total: 0, thisMonth: 0, count: 0 };
+
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const currentUserId = currentUser.id;
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    //Filter transactions where you are the SELLER
-    const sellTransactions = transactions.filter((t) => t.transactionType === "CREDIT_SALE" && t.status === "COMPLETED");
+    // ✅ Filter where YOU are the SELLER
+    const sellTransactions = transactions.filter((t) => {
+      const isSeller = t.seller?.id === currentUserId;
+      const isCompleted = t.status === "COMPLETED";
+      console.log("Transaction check:", {
+        isSeller,
+        isCompleted,
+        sellerID: t.seller?.id,
+        yourID: currentUserId,
+        status: t.status
+      });
+      return isSeller && isCompleted;
+    });
 
-    const totalRevenue = sellTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    console.log("💰 Your Sell Transactions:", sellTransactions);
 
-    const thisMonthRevenue = sellTransactions.filter((t) => new Date(t.createdAt) >= startOfMonth).reduce((sum, t) => sum + (t.amount || 0), 0);
+    // ✅ Use totalPrice (not amount)
+    const totalRevenue = sellTransactions.reduce((sum, t) => sum + (parseFloat(t.totalPrice) || 0), 0);
+
+    const thisMonthRevenue = sellTransactions
+      .filter((t) => new Date(t.createdAt) >= startOfMonth)
+      .reduce((sum, t) => sum + (parseFloat(t.totalPrice) || 0), 0);
+
+    console.log("💰 Revenue Calculated:", { totalRevenue, thisMonthRevenue, count: sellTransactions.length });
 
     return {
       total: totalRevenue.toFixed(2),
@@ -131,6 +154,8 @@ export default function HomePage() {
       count: sellTransactions.length,
     };
   };
+
+
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -143,12 +168,26 @@ export default function HomePage() {
   };
 
   const calculateStats = () => {
-    const totalCredits = credits.reduce((sum, credit) => sum + (credit.amount || 0), 0);
+    console.log("📊 Stats Debug - Credits:", credits);
+    console.log("📊 Stats Debug - Journeys:", journeys);
+
+    // ✅ Try multiple field names for credits
+    const totalCredits = credits.reduce((sum, credit) => {
+      const amount = credit.amount || credit.creditAmount || 0;
+      return sum + amount;
+    }, 0);
+
+    // ✅ Use co2ReducedKg (from JourneyDataDTO), fallback to co2Saved
     const pendingCredits = journeys
       .filter((j) => j.verificationStatus === "PENDING")
-      .reduce((sum, j) => sum + (j.creditsEarned || 0), 0);
-    const totalCO2 = journeys.reduce((sum, j) => sum + (j.co2Saved || 0), 0);
+      .reduce((sum, j) => sum + ((j.co2ReducedKg || 0) / 1000), 0);
+
+    // ✅ Use co2ReducedKg instead of co2Saved
+    const totalCO2 = journeys.reduce((sum, j) => sum + (j.co2ReducedKg || 0), 0);
+
     const verifiedJourneys = journeys.filter((j) => j.verificationStatus === "VERIFIED").length;
+
+    console.log("📈 Calculated Stats:", { totalCredits, pendingCredits, totalCO2, verifiedJourneys });
 
     return {
       totalCredits: totalCredits.toFixed(2),
@@ -159,7 +198,7 @@ export default function HomePage() {
   };
 
   const stats = calculateStats();
-  const revenue = calculateRevenue;
+  const revenue = calculateRevenue();
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -198,7 +237,7 @@ export default function HomePage() {
           <div className="grid grid-cols-4 gap-6 mb-8 w-full">
             <StatCard
               title="Carbon Credit Balance"
-              value={`${stats.totalCredits} tCO₂`}
+              value={`${wallet?.creditBalance?.toFixed(2) || '0.00'} tCO₂`}  // ✅ Use wallet balance
               sub={`+${stats.pendingCredits} tCO₂ pending verification`}
             />
             <StatCard
@@ -311,13 +350,13 @@ export default function HomePage() {
                         <div>
                           <p className="text-xs text-gray-500">CO₂ Saved</p>
                           <p className="text-sm font-medium text-green-600">
-                            {journey.co2Saved ? `${journey.co2Saved.toFixed(2)} kg` : "Pending"}
+                            {journey.co2ReducedKg ? `${journey.co2ReducedKg.toFixed(2)} kg` : "Pending"}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Credits Earned</p>
                           <p className="text-sm font-medium text-blue-600">
-                            {journey.creditsEarned ? `${journey.creditsEarned.toFixed(2)} tCO₂` : "Pending"}
+                            {journey.co2ReducedKg ? `${(journey.co2ReducedKg / 1000).toFixed(4)} tCO₂` : "Pending"}
                           </p>
                         </div>
                       </div>

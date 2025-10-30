@@ -268,7 +268,7 @@ export default function CarbonWallet() {
     {
       icon: <Wallet className="text-green-600" size={22} />,
       title: "Available for Sale",
-      value: `${stats.currentBalance} tCO₂`,
+      value: `${(wallet?.creditBalance || 0).toFixed(2)} tCO₂`,
       sub: "Active listings on marketplace",
       color: "text-green-600",
     },
