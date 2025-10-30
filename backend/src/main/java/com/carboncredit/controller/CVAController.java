@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.carboncredit.dto.ApiResponse;
+import com.carboncredit.dto.CarbonCreditDTO;
 import com.carboncredit.dto.CreditListingDTO;
 import com.carboncredit.dto.JourneyDataDTO;
 import com.carboncredit.entity.JourneyData;
@@ -277,6 +278,43 @@ public ResponseEntity<ApiResponse<CreditListingDTO>> rejectListing(
             return  ResponseEntity.badRequest().body(ApiResponse.error("Failed to fetch verifications: " + e.getMessage()));
         }
     }
+
+    /**
+ * Get all approved and rejected carbon credits
+ * Shows credits with VERIFIED or REJECTED status
+ */
+@GetMapping("/approved-credits")
+@PreAuthorize("hasRole('CVA')")
+public ResponseEntity<ApiResponse<List<CarbonCreditDTO>>> getApprovedCredits(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "100") int size,
+    Authentication authentication
+) {
+    try {
+        // Get all verified/rejected journeys and their credits
+        List<JourneyData> processedJourneys = cvaService.getProcessedJourneys();
+        
+        // Map to CarbonCreditDTO
+        List<CarbonCreditDTO> credits = processedJourneys.stream()
+            .filter(j -> j.getCarbonCredit() != null)
+            .map(j -> {
+                CarbonCreditDTO dto = new CarbonCreditDTO(j.getCarbonCredit());
+                // Add journey info for context
+                dto.getJourneyId();
+                // dto.setJourney(new JourneyDataDTO(j));
+                return dto;
+            })
+            .collect(Collectors.toList());
+        
+        log.info("Retrieved {} approved/rejected credits", credits.size());
+        return ResponseEntity.ok(ApiResponse.success(credits));
+    } catch (Exception e) {
+        log.error("Error fetching approved credits: {}", e.getMessage());
+        return ResponseEntity.badRequest()
+            .body(ApiResponse.error("Failed to fetch approved credits: " + e.getMessage()));
+    }
+}
+
     
     
 

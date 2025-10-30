@@ -1,6 +1,7 @@
 package com.carboncredit.repository;
 
 import com.carboncredit.entity.JourneyData;
+import com.carboncredit.entity.JourneyData.VerificationStatus;
 import com.carboncredit.entity.User;
 import com.carboncredit.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,6 +29,9 @@ public interface JourneyDataRepository extends JpaRepository<JourneyData, UUID> 
     List<JourneyData> findJourneysWithoutCredits();
 
     List<JourneyData> findByVerificationStatus(JourneyData.VerificationStatus verificationStatus);
+
+    List<JourneyData> findByVerificationStatusIn(List<VerificationStatus> statuses);
+
 
     // ⭐
 

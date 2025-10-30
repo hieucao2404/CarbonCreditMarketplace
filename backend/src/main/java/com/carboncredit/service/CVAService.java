@@ -2,6 +2,7 @@ package com.carboncredit.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.JourneyData;
+import com.carboncredit.entity.JourneyData.VerificationStatus;
 import com.carboncredit.entity.User;
 import com.carboncredit.exception.BusinessOperationException;
 import com.carboncredit.exception.ResourceNotFoundException;
@@ -32,6 +34,8 @@ public class CVAService {
     private final AuditService auditService;
     private final WalletService walletService;
 
+
+    
     /**
      * Get all journeys pending CVA verification
      */
@@ -215,5 +219,18 @@ public class CVAService {
             return 0.0;
         return (double) verified / total * 100.0;
     }
+
+    /**
+ * Get all processed journeys (VERIFIED or REJECTED)
+ */
+public List<JourneyData> getProcessedJourneys() {
+    return journeyDataRepository.findByVerificationStatusIn(
+        Arrays.asList(
+            VerificationStatus.VERIFIED,
+            VerificationStatus.REJECTED
+        )
+    );
+}
+
 
 }
