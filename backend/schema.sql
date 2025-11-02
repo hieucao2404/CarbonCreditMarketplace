@@ -344,3 +344,9 @@ WHERE listing_id IN (
   ) sub 
   WHERE rn > 1
 );
+
+-- 2️⃣ Get buyer001's wallet data (credit balance & cash balance)
+SELECT w.wallet_id, w.credit_balance, w.cash_balance, w.updated_at
+FROM wallets w
+JOIN users u ON w.user_id = u.user_id
+WHERE u.username = 'buyer001';
