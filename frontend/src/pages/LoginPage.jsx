@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Leaf } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { authService } from "../services/authService";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
@@ -12,44 +11,10 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname;
 
-  //Check if already logged in
-  // useEffect(() => {
-  //   const token = localStorage.getItem("token");
-  //   const user = localStorage.getItem("user");
+  const API_URL = "http://localhost:8080/api/users/login";
 
-  //   if (token && user) {
-  //     const userData = JSON.parse(user);
-  //     navigateByRole(userData.role);
-  //   }
-  // }, []);
-
-  const navigateByRole = (role) => {
-    switch (role) {
-      case "EV_OWNER":
-        navigate("/home", { replace: true });
-        break;
-      case "BUYER":
-        navigate("/buyer", { replace: true });
-        break;
-      case "CVA":
-        navigate("/verifier", { replace: true });
-        break;
-      case "ADMIN":
-        navigate("/admin", { replace: true });
-        break;
-      default:
-        navigate("/", { replace: true });
-    }
-  };
-
-
-  //  const API_URL = "http://localhost:8080/api/users/login";
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError("");
 
     if (!username || !password) {
@@ -60,42 +25,62 @@ const LoginPage = () => {
     try {
       setLoading(true);
 
-      const response = await authService.login(username, password);
+      const response = await axios.post(API_URL, {
+        username: username,
+        password: password,
+      });
 
-      if (response.success) {
-        const { user, token } = response.data;
+      const data = response.data;
+
+      if (data.success) {
+        const user = data.data.user;
+        const token = data.data.token;
 
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
 
+        // Hiện popup thành công
         setShowSuccess(true);
 
+        // Chờ 2.5 giây rồi chuyển trang
         setTimeout(() => {
           setShowSuccess(false);
-          if (from) {
-            navigate(from, { replace: true });
-          } else {
-            navigateByRole(user.role);
+          switch (user.role) {
+            case "EV_OWNER":
+              navigate("/home");
+              break;
+            case "BUYER":
+              navigate("/buyer");
+              break;
+            case "CVA":
+              navigate("/verifier");
+              break;
+            case "ADMIN":
+              navigate("/admin");
+              break;
+            default:
+              navigate("/");
           }
         }, 2500);
       } else {
-        setError(response.message || "Login failed!");
+        setError(data.message || "Đăng nhập thất bại!");
       }
     } catch (err) {
-      console.error("Login error: ", err);
+      console.error("Login error:", err);
       setError(
-        err.response?.data?.message || "Incorrect username or password!"
+        err.response?.data?.message || "Sai tên đăng nhập hoặc mật khẩu!"
       );
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ Hàm xử lý phím Enter
   const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !loading) {
+    if (e.key === "Enter") {
       handleLogin();
     }
   };
-
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-6 relative overflow-hidden">
@@ -173,8 +158,10 @@ const LoginPage = () => {
       </div>
 
       {/* Form đăng nhập */}
-      <div className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl border border-gray-100 relative z-10">
-          <form onSubmit={handleLogin} className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl">
+      <div
+        className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl border border-gray-100 relative z-10"
+        onKeyDown={handleKeyPress} // ✅ Gắn sự kiện Enter cho toàn form
+      >
         <h2 className="text-lg font-semibold text-gray-800 mb-1">
           Đăng nhập hệ thống
         </h2>
@@ -226,16 +213,16 @@ const LoginPage = () => {
         </div>
 
         <button
-          type="submit"
+          onClick={handleLogin}
           disabled={loading}
-          className={`w-full py-3 rounded-lg transition font-medium ${loading
+          className={`w-full py-3 rounded-lg transition font-medium ${
+            loading
               ? "bg-gray-400 cursor-not-allowed text-white"
               : "bg-black text-white hover:bg-gray-900"
-            }`}
+          }`}
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
-        </form>
       </div>
     </div>
   );
