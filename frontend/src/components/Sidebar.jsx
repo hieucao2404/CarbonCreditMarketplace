@@ -18,7 +18,7 @@ export default function Sidebar() {
   const menu = [
     { icon: <Home size={18} />, text: "Tổng quan", path: "/home" },
     { icon: <Car size={18} />, text: "Quản lý xe điện", path: "/vehicles" },
-    { icon: <MapPin size={18} />, text: "Quản lý duong di", path: "/journeys" },
+    { icon: <MapPin size={18} />, text: "Quản lý đường đi", path: "/journeys" },
     { icon: <Wallet size={18} />, text: "Ví carbon", path: "/wallet" },
     { icon: <TrendingUp size={18} />, text: "Niêm yết tín chỉ", path: "/listing" },
     { icon: <FileText size={18} />, text: "Giao dịch", path: "/transactions" },
@@ -26,7 +26,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 p-4 shadow-sm">
+    <aside className="w-64 bg-white border-r border-gray-200 p-4 shadow-sm h-screen">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-6">
         <div className="bg-green-100 p-2 rounded-full">
@@ -46,13 +46,19 @@ export default function Sidebar() {
             <button
               key={i}
               onClick={() => navigate(item.path)}
-              className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-left font-medium transition-all duration-150
+              className={`relative flex items-center gap-2 w-full px-3 py-2 rounded-lg text-left font-medium transition-all duration-300 group
               ${
                 isActive
-                  ? "bg-green-600 text-white shadow-sm"
-                  : "bg-white text-gray-700 hover:bg-green-50 hover:text-green-700"
+                  ? "bg-green-50 text-green-700 font-semibold"
+                  : "text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
+              {/* Vạch đứng trái với hiệu ứng slide-in */}
+              <span
+                className={`absolute left-0 top-0 h-full w-1 bg-green-600 rounded-r-sm transition-all duration-300
+                ${isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"}`}
+              ></span>
+
               {item.icon}
               <span className="text-sm">{item.text}</span>
             </button>

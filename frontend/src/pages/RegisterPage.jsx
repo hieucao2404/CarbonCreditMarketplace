@@ -156,8 +156,8 @@ const RegisterPage = () => {
           <option value="">Chọn vai trò</option>
           <option value="EV_OWNER">Chủ sở hữu xe điện</option>
           <option value="BUYER">Người mua tín chỉ carbon</option>
-          <option value="CVA">Người xác minh</option>
-          <option value="ADMIN">Quản trị viên</option>
+          {/* <option value="CVA">Người xác minh</option>
+          <option value="ADMIN">Quản trị viên</option> */}
         </select>
 
         <label className="block mb-2 text-gray-700 text-sm font-medium">
