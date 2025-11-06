@@ -58,7 +58,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/debug/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/api/vehicles", "/api/my-vehicles/**").authenticated()
+                        .requestMatchers("/api/system-settings/**").hasRole("ADMIN")
+                        .requestMatchers("/api/vehicles", "/api/my-vehicles/**").
+                        authenticated()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

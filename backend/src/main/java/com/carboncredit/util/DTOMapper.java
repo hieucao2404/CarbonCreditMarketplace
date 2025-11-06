@@ -10,7 +10,8 @@ import com.carboncredit.dto.*;
 import com.carboncredit.entity.*;
 
 /**
- * Utility class for converting entities to DTOs and preventing circular references
+ * Utility class for converting entities to DTOs and preventing circular
+ * references
  */
 public class DTOMapper {
 
@@ -155,5 +156,16 @@ public class DTOMapper {
     public static Page<NotificationDTO> toNotificationDTOPage(Page<Notification> notificationPage) {
         List<NotificationDTO> dtoList = toNotificationDTOList(notificationPage.getContent());
         return new PageImpl<>(dtoList, notificationPage.getPageable(), notificationPage.getTotalElements());
+    }
+
+    // SystemSetting mappings
+    public static SystemSettingDTO toSystemSettingDTO(SystemSetting setting) {
+        return setting != null ? new SystemSettingDTO(setting) : null;
+    }
+
+    public static List<SystemSettingDTO> toSystemSettingDTOList(List<SystemSetting> settings) {
+        return settings.stream()
+                .map(SystemSettingDTO::new)
+                .collect(Collectors.toList());
     }
 }

@@ -1,0 +1,308 @@
+{
+  "info": {
+    "name": "System Settings API",
+    "description": "Complete test suite for system settings endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "YOUR_TOKEN_HERE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Admin: Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin1\",\n  \"password\": \"admin123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/users/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "login"
+          ]
+        },
+        "description": "Login as an admin user to get the authToken"
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get All Settings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/system-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Specific Setting (PLATFORM_FEE_PERCENT)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/PLATFORM_FEE_PERCENT",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "PLATFORM_FEE_PERCENT"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Setting (PLATFORM_FEE_PERCENT)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"value\": \"7.5\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/PLATFORM_FEE_PERCENT",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "PLATFORM_FEE_PERCENT"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Setting (MAINTENANCE_MODE)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"value\": \"true\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/MAINTENANCE_MODE",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "MAINTENANCE_MODE"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Bulk Update Settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"PLATFORM_FEE_PERCENT\": \"6.0\",\n  \"MAINTENANCE_MODE\": \"false\",\n  \"MIN_CREDIT_AMOUNT\": \"0.5\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/bulk",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "bulk"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create New Setting",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"key\": \"MAX_TRANSACTION_AMOUNT\",\n  \"value\": \"10000000\",\n  \"description\": \"Maximum transaction amount in VND\",\n  \"dataType\": \"DECIMAL\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Specific Setting (Error 404)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/INVALID_KEY",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "INVALID_KEY"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Setting (Error 409 Conflict)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"key\": \"PLATFORM_FEE_PERCENT\",\n  \"value\": \"5.0\",\n  \"description\": \"Duplicate\",\n  \"dataType\": \"DECIMAL\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Setting (Error 400 Bad Value)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"value\": \"not_a_number\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/system-settings/PLATFORM_FEE_PERCENT",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "system-settings",
+            "PLATFORM_FEE_PERCENT"
+          ]
+        }
+      }
+    }
+  ]
+}

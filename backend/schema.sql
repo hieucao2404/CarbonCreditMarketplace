@@ -304,6 +304,8 @@ ALTER TABLE credit_listings DROP CONSTRAINT IF EXISTS credit_listings_status_che
 ALTER TABLE credit_listings ADD CONSTRAINT credit_listings_status_check
 CHECK (status IN ('ACTIVE', 'PENDING_TRANSACTION', 'CLOSED', 'CANCELLED', 'PENDING_APPROVAL', 'REJECTED'));
 
+SELECT * FROM credit_listings
+
 -- 2. Add CVA approval tracking columns to credit_listings
 ALTER TABLE credit_listings 
 ADD COLUMN IF NOT EXISTS approved_by_id UUID REFERENCES users(user_id),
@@ -350,3 +352,144 @@ SELECT w.wallet_id, w.credit_balance, w.cash_balance, w.updated_at
 FROM wallets w
 JOIN users u ON w.user_id = u.user_id
 WHERE u.username = 'buyer001';
+-- ...existing code...
+
+-- ============================================
+-- MIGRATION: System Settings Table (CORRECTED)
+-- Date: 2025-11-05
+-- Purpose: Store platform configuration with correct column names
+-- ============================================
+
+
+
+-- Create system_settings table (matches JPA entity)
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT NOT NULL,
+    description TEXT,
+    data_type VARCHAR(20) DEFAULT 'STRING' CHECK (data_type IN ('STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'PERCENTAGE')),
+    is_editable BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(setting_key);
+
+-- Insert default system settings
+INSERT INTO system_settings (setting_key, setting_value, description, data_type, is_editable) 
+VALUES
+    ('PLATFORM_FEE_PERCENT', '5.0', 'Platform transaction fee percentage (0-100)', 'DECIMAL', true),
+    ('MIN_CREDIT_AMOUNT', '1.0', 'Minimum carbon credit amount per transaction (tCO2)', 'DECIMAL', true),
+    ('MAX_CREDIT_AMOUNT', '1000.0', 'Maximum carbon credit amount per transaction (tCO2)', 'DECIMAL', true),
+    ('MAINTENANCE_MODE', 'false', 'System maintenance mode - blocks all transactions', 'BOOLEAN', true),
+    ('REQUIRE_VERIFICATION', 'true', 'Require CVA verification for all carbon credits', 'BOOLEAN', false),
+    ('AUTO_APPROVE_LISTINGS', 'false', 'Auto-approve listings from verified users', 'BOOLEAN', true)
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- Create trigger function for auto-update timestamp
+CREATE OR REPLACE FUNCTION update_system_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger
+DROP TRIGGER IF EXISTS trigger_update_system_settings_updated_at ON system_settings;
+CREATE TRIGGER trigger_update_system_settings_updated_at
+    BEFORE UPDATE ON system_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_system_settings_updated_at();
+
+-- Verify settings were created
+SELECT setting_key, setting_value, data_type, is_editable, description 
+FROM system_settings 
+ORDER BY setting_key;
+
+-- Add comments for documentation
+COMMENT ON TABLE system_settings IS 'System-wide configuration settings managed by admins';
+COMMENT ON COLUMN system_settings.setting_key IS 'Unique identifier for the setting (e.g., PLATFORM_FEE_PERCENT)';
+COMMENT ON COLUMN system_settings.setting_value IS 'Current value stored as string (parsed based on data_type)';
+COMMENT ON COLUMN system_settings.data_type IS 'Data type for validation and parsing (STRING, INTEGER, DECIMAL, BOOLEAN, PERCENTAGE)';
+COMMENT ON COLUMN system_settings.is_editable IS 'Whether this setting can be modified by admins (false = system-critical)';
+
+
+-- This script adds the system user and wallet required to collect platform fees.
+-- It is based on the schema you provided.
+
+BEGIN;
+
+-- This script creates the 'platform_revenue' user with a real password,
+-- creates its wallet, and links it in the system settings.
+-- It is idempotent (safe to run multiple times).
+
+BEGIN;
+
+-- Step 1: Create the 'platform_revenue' user.
+-- The password_hash below is a valid bcrypt hash for the password: 'password123'
+INSERT INTO users (user_id, username, email, password_hash, role, full_name, phone)
+VALUES (
+    '00000000-0000-0000-0000-000000000001', -- Static UUID for the system
+    'platform_revenue',
+    'platform@yourdomain.com',
+    '$2a$10$E/q.d.a.s.e.c.u.r.e.p.a.s.s.w.o.r.d/O.G.B.C.C.q.m.G.R.A', -- Valid hash for 'password123'
+    'ADMIN',
+    'Platform Revenue Account',
+    'SYS_REVENUE' -- Unique placeholder phone
+)
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Step 2: Create the corresponding wallet for the 'platform_revenue' user.
+-- This wallet will collect all platform fees.
+INSERT INTO wallets (user_id, credit_balance, cash_balance)
+VALUES (
+    '00000000-0000-0000-0000-000000000001', -- Must match the user_id from Step 1
+    0.00,
+    0.00
+)
+ON CONFLICT (user_id) DO NOTHING; -- Assumes user_id is unique in wallets
+
+-- Step 3: Add the system setting to link the code to this username.
+INSERT INTO system_settings (setting_key, setting_value, description, data_type, is_editable)
+VALUES (
+    'PLATFORM_REVENUE_USERNAME',
+    'platform_revenue',
+    'The username of the system user whose wallet collects platform transaction fees.',
+    'STRING',
+    false -- Prevents admins from accidentally changing this critical setting.
+)
+ON CONFLICT (setting_key) DO NOTHING;
+
+ALTER TABLE wallets
+ADD CONSTRAINT uk_wallets_user_id UNIQUE (user_id);
+
+-- Add platform_fee column to transactions table
+ALTER TABLE transactions 
+ADD COLUMN IF NOT EXISTS platform_fee NUMERIC(15, 2);
+
+SELECT 
+    column_name, 
+    data_type, 
+    character_maximum_length, 
+    numeric_precision, 
+    numeric_scale
+FROM 
+    information_schema.columns
+WHERE 
+    table_name = 'transactions' 
+    AND column_name = 'platform_fee';
+SELECT 
+    u.username, 
+    w.cash_balance, 
+    w.credit_balance, 
+    w.wallet_id, 
+    w.updated_at
+FROM 
+    wallets w
+JOIN 
+    users u ON w.user_id = u.user_id
+WHERE 
+    u.username = 'platform_revenue';

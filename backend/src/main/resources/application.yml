@@ -1,17 +1,19 @@
 server:
   port: 8080
-  
 
 spring:
   application:
     name: carbon-credit-marketplace
-  
+  cache:
+    type: simple
+    cache-names: systemSettings
+
   datasource:
     url: jdbc:postgresql://localhost:5432/carbon_credit_db
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:Hieu0935882519}
+    password: ${DB_PASSWORD:Hieu0935828519}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -21,7 +23,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     defer-datasource-initialization: true
-  
+
   security:
     user:
       name: admin
@@ -42,11 +44,10 @@ vnpay:
   tmn-code: H3G0BBWR
   hash-secret: 8X0PCRCIKQI55D7XP7BVFTUCAD384US7
   api-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  return-url: https://jase-unweathered-hildegard.ngrok-free.dev/api/wallets/vnpay-return 
+  return-url: https://jase-unweathered-hildegard.ngrok-free.dev/api/wallets/vnpay-return
   version: 2.1.0
   command: pay
   currency-code: VND
-
 
 momo:
   partner-code: MOMOBKUN20180529
@@ -58,5 +59,5 @@ momo:
   request-type: captureWallet
 
 currency:
- usd-to-vnd-rate: 26330 # 1 USD = 26,330 VND
+  usd-to-vnd-rate: 26330 # 1 USD = 26,330 VND
 

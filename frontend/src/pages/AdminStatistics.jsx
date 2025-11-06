@@ -1,9 +1,26 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "../components/AdminSidebar";
 import AdminHeader from "../components/AdminHeader";
-import { TrendingUp, DollarSign, Users, Package, RefreshCw, AlertCircle, Activity, CheckCircle, Clock, XCircle, Leaf, FileText } from "lucide-react";
+import { TrendingUp, DollarSign, Users, Package, RefreshCw, AlertCircle, Activity, CheckCircle, Clock, XCircle, Leaf, FileText, Wallet } from "lucide-react";
 import axiosInstance from "../api/axiosInstance";
 
+/**
+ * Admin Statistics Dashboard
+ * 
+ * FEATURES:
+ * ✅ Fetch platform revenue from platform_revenue user's wallet
+ * ✅ Calculate monthly transaction volume
+ * ✅ Track active users and completion rates
+ * ✅ Display top sellers and buyers
+ * ✅ Show transaction status breakdown
+ * ✅ Real-time CO2 reduction impact
+ * 
+ * BACKEND INTEGRATION:
+ * - GET /api/transactions/admin/by-status → Transaction data
+ * - GET /api/users → All users
+ * - GET /api/listings/stats → Listing statistics
+ * - GET /api/wallets/platform-revenue → Platform revenue wallet balance
+ */
 export default function AdminStatistics() {
   const [activeTab, setActiveTab] = useState("seller");
   const [loading, setLoading] = useState(true);
@@ -17,7 +34,8 @@ export default function AdminStatistics() {
     previousMonthCredits: 0,
     previousMonthUsers: 0,
     totalCO2Reduced: 0,
-    platformRevenue: 0,
+    platformRevenue: 0, // From platform_revenue wallet
+    platformRevenueAllTime: 0, // Total accumulated fees
     totalUsers: 0
   });
   const [transactionBreakdown, setTransactionBreakdown] = useState({
@@ -37,12 +55,48 @@ export default function AdminStatistics() {
     loadStatistics();
   }, []);
 
+  /**
+   * Load all platform statistics
+   * 
+   * DATA SOURCES:
+   * 1. Platform Revenue Wallet (platform_revenue user)
+   * 2. Completed Transactions (paginated)
+   * 3. All Users
+   * 4. Listing Statistics
+   * 5. Transaction Status Breakdown
+   */
   const loadStatistics = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // 1. Fetch completed transactions in smaller batches to avoid 500 error
+      console.log("📊 Loading Admin Statistics...");
+
+      // ============================================
+      // 1. FETCH PLATFORM REVENUE FROM WALLET
+      // ============================================
+      let platformRevenueData = { cashBalance: 0, creditBalance: 0 };
+      try {
+        console.log("💰 Fetching platform revenue wallet...");
+        const revenueRes = await axiosInstance.get("/wallets/platform-revenue");
+        
+        if (revenueRes.data?.data) {
+          platformRevenueData = {
+            cashBalance: Number(revenueRes.data.data.cashBalance || 0),
+            creditBalance: Number(revenueRes.data.data.creditBalance || 0)
+          };
+          console.log("✅ Platform Revenue Wallet:");
+          console.log("   • Cash Balance:", formatCurrency(platformRevenueData.cashBalance));
+          console.log("   • Credit Balance:", platformRevenueData.creditBalance.toFixed(2), "tCO₂");
+        }
+      } catch (walletError) {
+        console.warn("⚠️ Could not fetch platform revenue wallet:", walletError.message);
+        // Continue with zeros if wallet endpoint fails
+      }
+
+      // ============================================
+      // 2. FETCH COMPLETED TRANSACTIONS (PAGINATED)
+      // ============================================
       let allCompletedTransactions = [];
       let currentPage = 0;
       let hasMore = true;
@@ -75,12 +129,16 @@ export default function AdminStatistics() {
 
       console.log(`💰 Total Completed Transactions: ${allCompletedTransactions.length}`);
 
-      // 2. Fetch all users
+      // ============================================
+      // 3. FETCH ALL USERS
+      // ============================================
       const usersRes = await axiosInstance.get("/users");
       const allUsers = usersRes.data?.data || [];
       console.log("👥 Total Users:", allUsers.length);
 
-      // 3. Fetch listing statistics
+      // ============================================
+      // 4. FETCH LISTING STATISTICS
+      // ============================================
       let listingStatsData = { active: 0, totalListings: 0, averagePrice: 0 };
       try {
         const listingsStatsRes = await axiosInstance.get("/listings/stats");
@@ -97,7 +155,9 @@ export default function AdminStatistics() {
         console.warn("⚠️ Could not fetch listing stats:", listingError.message);
       }
 
-      // 4. Calculate statistics
+      // ============================================
+      // 5. CALCULATE MONTHLY STATISTICS
+      // ============================================
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
@@ -118,7 +178,7 @@ export default function AdminStatistics() {
       console.log(`📅 Current Month (${currentMonth + 1}/${currentYear}): ${currentMonthTransactions.length} transactions`);
       console.log(`📅 Previous Month (${previousMonth + 1}/${previousYear}): ${previousMonthTransactions.length} transactions`);
 
-      // Calculate monthly revenue
+      // Calculate monthly transaction volume (total amount traded)
       const monthlyRevenue = currentMonthTransactions.reduce((sum, tx) => 
         sum + Number(tx.totalPrice || tx.amount || 0), 0
       );
@@ -141,10 +201,25 @@ export default function AdminStatistics() {
         sum + Number(tx.carbonCreditsAmount || 0), 0
       );
 
-      // Calculate platform revenue (assume 5% fee on all transactions)
-      const platformRevenue = monthlyRevenue * 0.05;
+      // ============================================
+      // 6. PLATFORM REVENUE CALCULATION
+      // ============================================
+      // Monthly platform revenue = sum of platform_fee from current month transactions
+      const monthlyPlatformRevenue = currentMonthTransactions.reduce((sum, tx) => 
+        sum + Number(tx.platformFee || 0), 0
+      );
 
-      // Calculate active users (users who made transactions this month)
+      // All-time platform revenue = platform_revenue wallet cash balance
+      const platformRevenueAllTime = platformRevenueData.cashBalance;
+
+      console.log("💵 Platform Revenue Analysis:");
+      console.log("   • Monthly Fees Collected:", formatCurrency(monthlyPlatformRevenue));
+      console.log("   • All-Time Revenue (Wallet):", formatCurrency(platformRevenueAllTime));
+      console.log("   • Monthly Transaction Volume:", formatCurrency(monthlyRevenue));
+
+      // ============================================
+      // 7. CALCULATE ACTIVE USERS
+      // ============================================
       const activeUserIds = new Set();
       currentMonthTransactions.forEach(tx => {
         if (tx.buyer?.id) activeUserIds.add(tx.buyer.id);
@@ -152,7 +227,6 @@ export default function AdminStatistics() {
       });
       const activeUsers = activeUserIds.size;
 
-      // Calculate previous month active users
       const previousActiveUserIds = new Set();
       previousMonthTransactions.forEach(tx => {
         if (tx.buyer?.id) previousActiveUserIds.add(tx.buyer.id);
@@ -160,7 +234,9 @@ export default function AdminStatistics() {
       });
       const previousMonthUsers = previousActiveUserIds.size;
 
-      // Calculate completion rate and transaction breakdown
+      // ============================================
+      // 8. CALCULATE TRANSACTION BREAKDOWN
+      // ============================================
       const allTransactionsRes = await Promise.all([
         axiosInstance.get("/transactions/admin/by-status", { params: { status: "COMPLETED", page: 0, size: 1 }}),
         axiosInstance.get("/transactions/admin/by-status", { params: { status: "PENDING", page: 0, size: 1 }}),
@@ -175,17 +251,17 @@ export default function AdminStatistics() {
 
       console.log(`✅ Completion Rate: ${completionRate.toFixed(1)}% (${totalCompleted}/${totalAll})`);
 
-      // Set transaction breakdown
       setTransactionBreakdown({
         completed: totalCompleted,
         pending: totalPending,
         cancelled: totalCancelled
       });
 
-      // Set listing stats
       setListingStats(listingStatsData);
 
-      // 5. Calculate top sellers and buyers from all transactions
+      // ============================================
+      // 9. CALCULATE TOP SELLERS AND BUYERS
+      // ============================================
       const sellerStats = {};
       const buyerStats = {};
 
@@ -240,7 +316,9 @@ export default function AdminStatistics() {
       console.log(`🏆 Top Sellers:`, topSellersArray);
       console.log(`🏆 Top Buyers:`, topBuyersArray);
 
-      // Update state
+      // ============================================
+      // 10. UPDATE STATE
+      // ============================================
       setStats({
         monthlyRevenue,
         creditsTraded,
@@ -250,12 +328,15 @@ export default function AdminStatistics() {
         previousMonthCredits,
         previousMonthUsers,
         totalCO2Reduced,
-        platformRevenue,
+        platformRevenue: monthlyPlatformRevenue, // Monthly platform fees
+        platformRevenueAllTime, // Total revenue in platform_revenue wallet
         totalUsers: allUsers.length
       });
 
       setTopSellers(topSellersArray);
       setTopBuyers(topBuyersArray);
+
+      console.log("✅ All statistics loaded successfully");
 
     } catch (e) {
       console.error("❌ Error loading statistics:", e.response?.data || e.message);
@@ -354,7 +435,7 @@ export default function AdminStatistics() {
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign size={18} className="text-gray-500" />
-                <p className="text-gray-500 text-sm">Doanh thu tháng</p>
+                <p className="text-gray-500 text-sm">Khối lượng giao dịch</p>
               </div>
               <h2 className="text-2xl font-semibold text-gray-800">
                 {formatCurrency(stats.monthlyRevenue)}
@@ -421,28 +502,64 @@ export default function AdminStatistics() {
 
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-1">
-                <DollarSign size={18} className="text-blue-600" />
-                <p className="text-blue-700 text-sm font-medium">Doanh thu nền tảng</p>
+                <Wallet size={18} className="text-blue-600" />
+                <p className="text-blue-700 text-sm font-medium">Doanh thu nền tảng (tháng)</p>
               </div>
               <h2 className="text-2xl font-semibold text-blue-800">
                 {formatCurrency(stats.platformRevenue)}
               </h2>
               <p className="text-blue-600 text-xs mt-1">
-                Phí giao dịch 5% tháng này
+                Phí giao dịch thu được tháng này
               </p>
             </div>
 
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-1">
-                <FileText size={18} className="text-purple-600" />
-                <p className="text-purple-700 text-sm font-medium">Niêm yết hoạt động</p>
+                <DollarSign size={18} className="text-purple-600" />
+                <p className="text-purple-700 text-sm font-medium">Tổng doanh thu tích lũy</p>
               </div>
               <h2 className="text-2xl font-semibold text-purple-800">
-                {listingStats.active}
+                {formatCurrency(stats.platformRevenueAllTime)}
               </h2>
               <p className="text-purple-600 text-xs mt-1">
-                Giá TB: {formatCurrency(listingStats.averagePrice)}
+                Ví platform_revenue (toàn thời gian)
               </p>
+            </div>
+          </div>
+
+          {/* Additional info card */}
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-5 mb-8">
+            <div className="flex items-start gap-3">
+              <Wallet className="text-indigo-600 mt-1" size={24} />
+              <div>
+                <h3 className="text-indigo-900 font-semibold mb-2">
+                  Thông tin ví doanh thu hệ thống
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-indigo-700 mb-1">Tài khoản hệ thống:</p>
+                    <code className="bg-white px-3 py-1 rounded text-indigo-900 font-mono text-xs">
+                      platform_revenue
+                    </code>
+                  </div>
+                  <div>
+                    <p className="text-indigo-700 mb-1">Nguồn thu:</p>
+                    <p className="text-indigo-900 font-medium">Phí giao dịch từ mỗi đơn hàng</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-700 mb-1">Niêm yết hoạt động:</p>
+                    <p className="text-indigo-900 font-bold text-lg">
+                      {listingStats.active}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-700 mb-1">Giá trung bình:</p>
+                    <p className="text-indigo-900 font-bold text-lg">
+                      {formatCurrency(listingStats.averagePrice)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

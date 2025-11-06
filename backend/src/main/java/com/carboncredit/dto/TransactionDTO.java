@@ -23,6 +23,8 @@ public class TransactionDTO {
     private BigDecimal carbonCreditsAmount; // Amount of credits transferred
     private BigDecimal totalPrice; // Total price paid
     private BigDecimal amount; // Keep for backward compatibility
+    // ▼▼▼ ADD THIS LINE ▼▼▼
+    private BigDecimal platformFee;
     
     private String status;
     private LocalDateTime createdAt;
@@ -71,6 +73,7 @@ public class TransactionDTO {
         }
         
         this.amount = transaction.getAmount();
+        this.platformFee = transaction.getPlatformFee();    
         this.status = transaction.getStatus() != null 
             ? transaction.getStatus().toString() 
             : null;

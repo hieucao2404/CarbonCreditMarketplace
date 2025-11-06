@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
@@ -37,6 +38,7 @@ import com.carboncredit.dto.WithdrawRequest;
 import com.carboncredit.service.BankingService;
 import com.carboncredit.service.CurrencyService;
 import com.carboncredit.service.MoMoService;
+import com.carboncredit.service.SystemSettingService;
 import com.carboncredit.util.DTOMapper;
 import com.carboncredit.service.TransactionService;
 import com.carboncredit.service.UserService;
@@ -65,6 +67,7 @@ public class WalletController {
     private final UserService userService;
     private final BankingService bankingService;
     private final TransactionService transactionService;
+    private final SystemSettingService systemSettingService; // <-- ADD THIS FIELD
 
     @Autowired
     private VNPayService vnPayService;
@@ -704,6 +707,45 @@ public class WalletController {
         } catch (Exception e) {
             log.error("Error retrieving user wallet: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * (ADMIN) Get the platform's main revenue wallet
+     */
+    @GetMapping("/platform-revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<WalletResponse>> getPlatformRevenueWallet(Authentication authentication) {
+        log.info("📥 Admin user {} fetching platform revenue wallet", authentication.getName());
+        try {
+            // 1. Get the platform username from system settings
+            String platformUsername = systemSettingService.getSettingValue("PLATFORM_REVENUE_USERNAME"); //
+            if (platformUsername == null || platformUsername.isEmpty()) {
+                log.error("CRITICAL: System setting 'PLATFORM_REVENUE_USERNAME' is not defined.");
+                throw new ResourceNotFoundException("Platform revenue account is not configured.");
+            }
+
+            // 2. Find the platform user
+            User platformUser = userService.findByUsername(platformUsername)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", platformUsername));
+
+            // 3. Get that user's wallet
+            Wallet wallet = walletService.getOrCreateWallet(platformUser);
+            WalletResponse response = mapToWalletResponse(wallet); //
+
+            log.info("✅ Platform revenue wallet retrieved successfully. Cash Balance: {}", response.getCashBalance());
+
+            // 4. Return it
+            return ResponseEntity.ok(ApiResponse.success(response));
+
+        } catch (ResourceNotFoundException e) {
+            log.error("❌ Failed to find platform revenue wallet: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("❌ Error retrieving platform revenue wallet: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve wallet: " + e.getMessage()));
         }
     }
 

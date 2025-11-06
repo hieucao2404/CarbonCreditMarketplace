@@ -1,6 +1,7 @@
 package com.carboncredit.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,6 +70,12 @@ public class TransactionService {
 
     @Autowired
     private WalletService walletService;
+
+    @Autowired
+    private SystemSettingService systemSettingService;
+
+    @Autowired
+    private UserService userService;
 
     // ==== TRANSACTION AND PROCESSING ================
 
@@ -170,6 +177,11 @@ public class TransactionService {
 
         // Re-fetch entities within this transaction for safety
         Transaction currentTransaction = findTransactionById(transaction.getId()); // Use internal helper
+
+        // Get dynamic platform fee from system settings
+        Double feePercent = systemSettingService.getSettingAsDouble("PLATFORM_FEE_PERCENT");
+        log.info("📊 Using platform fee: {}%", feePercent);
+
         CreditListing currentListing = creditListingRepository.findById(currentTransaction.getListing().getId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Listing not found during completion: " + currentTransaction.getListing().getId()));
@@ -180,40 +192,62 @@ public class TransactionService {
         User buyer = currentTransaction.getBuyer();
         User seller = currentTransaction.getSeller();
         BigDecimal price = currentTransaction.getAmount();
+
+        // === Getting fee =====
+        BigDecimal platformFee = price.multiply(BigDecimal.valueOf(feePercent)).divide(BigDecimal.valueOf(100), 2,
+                RoundingMode.HALF_UP);
+        BigDecimal sellerReceives = price.subtract(platformFee);
+
+        // Get the patform user for the fee
+        String platformUsername = systemSettingService.getSettingValue("PLATFORM_REVENUE_USERNAME");
+        if (platformUsername == null || platformUsername.isEmpty()) {
+            log.error(
+                    "CRITICLA: PLARFORM_REVENUE_USERNAME system setting is not defnied! Transaction will be rolled back.");
+            throw new BusinessOperationException("Platform revenue account is not configured. Transaction halted");
+        }
+
+        User platformUser = userService.findByUsername(platformUsername)
+                .orElseThrow(() -> {
+                    log.error("CRITICAL: Platform revenue user '{}' not found in database!", platformUsername);
+                    return new EntityNotFoundException("Platform revenue user '" + platformUsername + "' not found!");
+                });
+
         BigDecimal creditAmount = currentCredit.getCreditAmount();
 
         // validate transaction preconditions
+
         if (currentTransaction.getStatus() != TransactionStatus.PENDING) {
             log.warn("Attempted to complete transaction {} which is not PENDING (Status: {})", transaction.getId(),
                     currentTransaction.getStatus());
-            // Depending on flow, this might be okay (e.g., if re-processed) or an error.
-            // For now, let's allow re-completion attempt but log warning. If it must be
-            // PENDING, uncomment below:
-            // throw new BusinessOperationException("Transaction is not in PENDING state.
-            // Cannot complete.");
         }
         if (currentListing.getStatus() != ListingStatus.PENDING_TRANSACTION) {
             log.warn(
                     "Attempted to complete transaction {} for listing {} which is not PENDING_TRANSACTION (Status: {})",
                     transaction.getId(), currentListing.getId(), currentListing.getStatus());
-            // Allow for now, but log. If strict state needed, uncomment below:
-            // throw new BusinessOperationException(
-            // "Listing is not in PENDING_TRANSACTION state. Cannot complete purchase.");
-
         }
+
         // --- Perform Atomic Transfers (Idempotency check recommended in WalletService)
-        // ---
-        log.debug("Transferring cash: {} from {} to {}", price, buyer.getUsername(), seller.getUsername());
-        walletService.updateCashBalance(buyer.getId(), price.negate());
-        walletService.updateCashBalance(seller.getId(), price);
+        
+        log.debug("Transferring cash: {} from {} (Buyer)", price, buyer.getUsername());
+        walletService.updateCashBalance(buyer.getId(), price.negate()); // Buyer pays full price
+
+        log.debug("Transferring cash: {} to {} (Seller)", sellerReceives, seller.getUsername());
+        walletService.updateCashBalance(seller.getId(), sellerReceives); // Seller gets proceeds
+        
+        log.debug("Transferring platform fee: {} to {} (Platform)", platformFee, platformUser.getUsername());
+        walletService.updateCashBalance(platformUser.getId(), platformFee); // Platform gets the fee
+
 
         log.debug("Transferring credits: {} from {} to {}", creditAmount, seller.getUsername(), buyer.getUsername());
         walletService.updateCreditBalance(seller.getId(), creditAmount.negate());
         walletService.updateCreditBalance(buyer.getId(), creditAmount);
-
         // --- Update Entity Statuses ---
         currentTransaction.setStatus(TransactionStatus.COMPLETED);
         currentTransaction.setCompletedAt(LocalDateTime.now());
+        
+        // (This assumes you've added the `platformFee` field to your Transaction.java entity)
+        currentTransaction.setPlatformFee(platformFee);
+        
         currentListing.setStatus(ListingStatus.CLOSED);
         currentCredit.setStatus(CreditStatus.SOLD);
 
@@ -456,6 +490,21 @@ public class TransactionService {
         log.info("Generated statistics: {} total transactions, {}% success rate", totalTransactions,
                 stats.get("successRate"));
         return stats;
+    }
+
+    /**
+     * Calculate transaction fee preview (used in frontend)
+     */
+    public BigDecimal calculateTransactionFee(BigDecimal amount) {
+        Double feePercent = systemSettingService.getSettingAsDouble("PLATFORM_FEE_PERCENT");
+        return amount.multiply(BigDecimal.valueOf(feePercent)).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Get current plafrom fee percentage
+     */
+    public Double getCurrentPlatformFeePercent() {
+        return systemSettingService.getSettingAsDouble("PLATFORM_FEE_PERCENT");
     }
 
 }
