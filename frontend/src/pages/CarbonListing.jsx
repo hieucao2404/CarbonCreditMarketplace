@@ -17,6 +17,9 @@ export default function CarbonListing() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // ✅ Giá gợi ý cố định (có thể sau này thay bằng API)
+  const suggestedPrice = 26.8;
+
   useEffect(() => {
     loadData();
   }, []);
@@ -26,47 +29,39 @@ export default function CarbonListing() {
     setSuccess("");
 
     try {
-      // Load verified credits
       const creditsRes = await carbonCreditService.getMyCredits();
       const creditsArray = Array.isArray(creditsRes.data?.content)
         ? creditsRes.data.content
         : [];
 
-      // Load user's listings (including pending ones)
       const user = JSON.parse(localStorage.getItem("user"));
       let listingsArray = [];
 
       if (user?.id) {
         const listingsRes = await creditListingService.getMyListings();
-        console.log("🔍 Raw listings response:", listingsRes);
-        console.log("🔍 Listings data:", listingsRes.data);
         listingsArray = Array.isArray(listingsRes.data?.content)
           ? listingsRes.data.content
           : Array.isArray(listingsRes.data)
-            ? listingsRes.data
-            : [];
-        console.log("🔍 Processed listings array:", listingsArray);
+          ? listingsRes.data
+          : [];
         setListings(listingsArray);
       }
 
-      // Get credit IDs that are already listed (including PENDING_APPROVAL)
       const listedCreditIds = new Set(
         listingsArray
-          .filter(l => l.status === 'ACTIVE' || l.status === 'PENDING_APPROVAL')
-          .map(l => l.credit?.creditId || l.creditId)
+          .filter(
+            (l) => l.status === "ACTIVE" || l.status === "PENDING_APPROVAL"
+          )
+          .map((l) => l.credit?.creditId || l.creditId)
       );
 
-      // Filter out credits that are:
-      // 1. Not verified
-      // 2. Already have a listed timestamp
-      // 3. Have pending or active listings
       setCreditOptions(
         creditsArray.filter(
           (c) =>
             c.status === "VERIFIED" &&
             !c.listedAt &&
             c.creditAmount > 0 &&
-            !listedCreditIds.has(c.creditId) // ← Add this check
+            !listedCreditIds.has(c.creditId)
         )
       );
     } catch (err) {
@@ -127,19 +122,21 @@ export default function CarbonListing() {
             <div className="flex mb-6 border-b border-gray-200">
               <button
                 onClick={() => setActiveTab("create")}
-                className={`flex-1 text-center py-2 rounded-t-lg font-medium transition ${activeTab === "create"
-                  ? "bg-gray-100 text-gray-800 border border-gray-200 border-b-transparent"
-                  : "bg-white text-gray-500"
-                  }`}
+                className={`flex-1 text-center py-2 rounded-t-lg font-medium transition ${
+                  activeTab === "create"
+                    ? "bg-gray-100 text-gray-800 border border-gray-200 border-b-transparent"
+                    : "bg-white text-gray-500"
+                }`}
               >
                 New Listing
               </button>
               <button
                 onClick={() => setActiveTab("manage")}
-                className={`flex-1 text-center py-2 rounded-t-lg font-medium transition ${activeTab === "manage"
-                  ? "bg-gray-100 text-gray-800 border border-gray-200 border-b-transparent"
-                  : "bg-white text-gray-500"
-                  }`}
+                className={`flex-1 text-center py-2 rounded-t-lg font-medium transition ${
+                  activeTab === "manage"
+                    ? "bg-gray-100 text-gray-800 border border-gray-200 border-b-transparent"
+                    : "bg-white text-gray-500"
+                }`}
               >
                 Manage Listings
               </button>
@@ -173,8 +170,8 @@ export default function CarbonListing() {
                   <div className="mb-4">
                     <label className="text-sm text-gray-700 font-medium">
                       {listingType === "fixed"
-                        ? "Price (VND/tCO₂)"
-                        : "Starting Price (VND/tCO₂)"}
+                        ? "Price ($/tCO₂)"
+                        : "Starting Price ($/tCO₂)"}
                     </label>
                     <input
                       type="number"
@@ -230,7 +227,7 @@ export default function CarbonListing() {
                     </h4>
                   </div>
                   <p className="text-green-600 text-3xl font-bold mb-1">
-                    26.8 VND/tCO₂
+                    {suggestedPrice} $/tCO₂
                   </p>
                   <p className="text-sm text-gray-500 mb-3">Suggested price</p>
                   <div className="flex items-center gap-2 mb-3">
@@ -249,7 +246,13 @@ export default function CarbonListing() {
                     Current market price is up 5% from last week. Demand is
                     high in your area.
                   </div>
-                  <button className="w-full border border-gray-200 rounded-lg py-2 text-sm font-medium hover:bg-gray-100 transition">
+
+                  {/* ✅ Nút Apply Suggestion có chức năng */}
+                  <button
+                    type="button"
+                    onClick={() => setPrice(suggestedPrice.toString())}
+                    className="w-full border border-gray-200 rounded-lg py-2 text-sm font-medium hover:bg-gray-100 transition"
+                  >
                     Apply Suggestion
                   </button>
                 </div>
@@ -294,7 +297,7 @@ export default function CarbonListing() {
                               {listing.price}
                             </span>
                             <span className="text-sm text-gray-500">
-                              VND/tCO₂
+                              $/tCO₂
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
@@ -303,61 +306,27 @@ export default function CarbonListing() {
                               (listing.creditAmount || 0) *
                               (listing.price || 0)
                             ).toLocaleString()}{" "}
-                            VND
+                            $
                           </p>
                         </div>
 
-                        {/* Right - Status & Actions */}
+                        {/* Right - Status */}
                         <div className="flex flex-col items-end gap-2">
                           <span
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-full ${listing.status === "ACTIVE"
-                              ? "bg-black text-white"
-                              : listing.status === "SOLD"
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-full ${
+                              listing.status === "ACTIVE"
+                                ? "bg-black text-white"
+                                : listing.status === "SOLD"
                                 ? "bg-gray-200 text-gray-700"
                                 : listing.status === "PENDING_APPROVAL"
-                                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                                  : listing.status === "REJECTED"
-                                    ? "bg-red-100 text-red-700 border border-red-200"
-                                    : "bg-gray-100 text-gray-600"
-                              }`}
+                                ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                                : listing.status === "REJECTED"
+                                ? "bg-red-100 text-red-700 border border-red-200"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
                           >
-                            {listing.status === "ACTIVE"
-                              ? "Active"
-                              : listing.status === "SOLD"
-                                ? "Sold"
-                                : listing.status === "PENDING_APPROVAL"
-                                  ? "Pending Approval"
-                                  : listing.status === "REJECTED"
-                                    ? "Rejected"
-                                    : listing.status}
+                            {listing.status}
                           </span>
-
-                          <div className="flex gap-2">
-                            {listing.status === "ACTIVE" && (
-                              <>
-                                <button className="px-4 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                                  Edit
-                                </button>
-                                <button className="px-4 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                                  Cancel
-                                </button>
-                              </>
-                            )}
-                            {listing.status === "PENDING_APPROVAL" && (
-                              <span className="text-xs text-gray-500 italic">
-                                Awaiting CVA review
-                              </span>
-                            )}
-                            {listing.status === "REJECTED" &&
-                              listing.rejectionReason && (
-                                <span
-                                  className="text-xs text-red-600 max-w-xs truncate"
-                                  title={listing.rejectionReason}
-                                >
-                                  Reason: {listing.rejectionReason}
-                                </span>
-                              )}
-                          </div>
                         </div>
                       </div>
                     </div>
