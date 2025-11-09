@@ -470,26 +470,57 @@ ADD CONSTRAINT uk_wallets_user_id UNIQUE (user_id);
 ALTER TABLE transactions 
 ADD COLUMN IF NOT EXISTS platform_fee NUMERIC(15, 2);
 
-SELECT 
-    column_name, 
-    data_type, 
-    character_maximum_length, 
-    numeric_precision, 
-    numeric_scale
-FROM 
-    information_schema.columns
-WHERE 
-    table_name = 'transactions' 
-    AND column_name = 'platform_fee';
-SELECT 
-    u.username, 
-    w.cash_balance, 
-    w.credit_balance, 
-    w.wallet_id, 
-    w.updated_at
-FROM 
-    wallets w
-JOIN 
-    users u ON w.user_id = u.user_id
-WHERE 
-    u.username = 'platform_revenue';
+-- Sau khi review tren lop
+ -- 07 - 11 - 2025
+
+
+ -- 1. Add 'PENDING_INSPECTION' to the journey_data verification_status
+ALTER TABLE journey_data DROP CONSTRAINT journey_data_verification_status_check;
+ALTER TABLE journey_data ADD CONSTRAINT journey_data_verification_status_check
+CHECK (verification_status IN (
+    'PENDING_VERIFICATION',
+    'UNDER_REVIEW',
+    'VERIFIED',
+    'REJECTED',
+    'REQUIRES_MORE_INFO',
+    'PENDING_INSPECTION' -- <-- NEW STATUS
+));
+
+-- 2. Create the table for Verification Stations
+CREATE TABLE IF NOT EXISTS verification_stations (
+    station_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    address TEXT NOT NULL,
+    operating_hours VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    -- You can assign a primary CVA to a station
+    assigned_cva_id UUID REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Create the table for Inspection Appointments
+CREATE TABLE IF NOT EXISTS inspection_appointments (
+    appointment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    journey_id UUID UNIQUE NOT NULL REFERENCES journey_data(journey_id),
+    ev_owner_id UUID NOT NULL REFERENCES users(user_id),
+    cva_id UUID NOT NULL REFERENCES users(user_id),
+    station_id UUID REFERENCES verification_stations(station_id),
+    appointment_time TIMESTAMP,
+    status VARCHAR(50) NOT NULL CHECK (status IN (
+        'REQUESTED',     -- CVA has requested inspection
+        'SCHEDULED',     -- EV Owner has booked a time/place
+        'COMPLETED',     -- CVA has finished the inspection
+        'CANCELLED'      -- Cancelled by either party
+    )),
+    cva_notes TEXT, -- Notes from CVA after inspection
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_stations_is_active ON verification_stations(is_active);
+CREATE INDEX IF NOT EXISTS idx_appointments_journey_id ON inspection_appointments(journey_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_ev_owner_id ON inspection_appointments(ev_owner_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_cva_id ON inspection_appointments(cva_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON inspection_appointments(status);

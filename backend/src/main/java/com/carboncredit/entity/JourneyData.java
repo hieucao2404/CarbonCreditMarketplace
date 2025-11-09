@@ -77,6 +77,6 @@ public class JourneyData {
         UNDER_REVIEW,
         VERIFIED,
         REJECTED,
-        REQUIRES_MORE_INFO
+        REQUIRES_MORE_INFO, PENDING_INSPECTION
     }
 }
