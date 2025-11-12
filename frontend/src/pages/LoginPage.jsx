@@ -66,9 +66,7 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message || "Sai tên đăng nhập hoặc mật khẩu!"
-      );
+      setError(err.response?.data?.message || "Sai tên đăng nhập hoặc mật khẩu!");
     } finally {
       setLoading(false);
     }
@@ -125,7 +123,6 @@ const LoginPage = () => {
                   transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
                 />
               </motion.svg>
-
               <motion.p
                 className="text-green-600 font-semibold text-lg mt-4"
                 initial={{ opacity: 0, y: 10 }}
@@ -164,6 +161,7 @@ const LoginPage = () => {
           Nhập thông tin tài khoản của bạn để tiếp tục
         </p>
 
+        {/* Username */}
         <label className="block mb-2 text-gray-700 text-sm font-medium">
           Tên đăng nhập
         </label>
@@ -175,6 +173,7 @@ const LoginPage = () => {
           className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
         />
 
+        {/* Password với icon con mắt */}
         <label className="block mb-2 text-gray-700 text-sm font-medium">
           Mật khẩu
         </label>
@@ -199,12 +198,14 @@ const LoginPage = () => {
           </button>
         </div>
 
+        {/* Error */}
         {error && (
           <p className="text-red-600 text-sm mb-3 text-center font-medium">
             {error}
           </p>
         )}
 
+        {/* Links */}
         <div className="flex justify-between items-center mb-6 text-sm">
           <button
             onClick={() => navigate("/forgot-password")}
@@ -220,6 +221,7 @@ const LoginPage = () => {
           </button>
         </div>
 
+        {/* Nút đăng nhập */}
         <button
           onClick={handleLogin}
           disabled={loading}

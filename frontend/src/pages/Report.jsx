@@ -233,7 +233,7 @@ export default function Report() {
 
                 <div className="text-center space-y-1 mb-6">
                   <p className="text-3xl font-semibold text-blue-600">
-                    {stats.totalRevenue.toLocaleString()} VND
+                    {stats.totalRevenue.toLocaleString()} $
                   </p>
                   <p className="text-sm text-gray-500">
                     Total revenue (All time)
@@ -243,14 +243,14 @@ export default function Report() {
                 <div className="flex justify-between text-center border-t border-gray-200 pt-4">
                   <div className="flex-1">
                     <p className="text-xl font-semibold text-gray-800">
-                      {stats.monthRevenue.toLocaleString()} VND
+                      {stats.monthRevenue.toLocaleString()} $
                     </p>
                     <p className="text-sm text-gray-500">This month</p>
                   </div>
                   <div className="w-px bg-gray-200 mx-6" />
                   <div className="flex-1">
                     <p className="text-xl font-semibold text-gray-800">
-                      {stats.weekRevenue.toLocaleString()} VND
+                      {stats.weekRevenue.toLocaleString()} $
                     </p>
                     <p className="text-sm text-gray-500">This week</p>
                   </div>

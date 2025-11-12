@@ -3,11 +3,20 @@
 @tailwind utilities;
 
 /* Toàn bộ project */
-body {
+/* body {
   font-family: Arial, sans-serif;
   background: linear-gradient(135deg, #eefbf4, #e3f3ff);
   margin: 0;
   padding: 0;
+} */
+
+body {
+  background: linear-gradient(135deg, #eefbf4, #e3f3ff);
+}
+
+/* ✅ Dùng đúng cú pháp */
+.dark body {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
 }
 
 /* ✅ CHỈ áp dụng cho trang đăng nhập */

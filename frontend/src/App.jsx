@@ -2,6 +2,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import ThemeToggle from "./components/ThemeToggle";
+
 import Profile from "./pages/Profile";
 import BuyerProfile from "./pages/BuyerProfile";
 import DepositPage from "./pages/DepositPage";
@@ -56,6 +58,8 @@ function App() {
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/buyer/profile" element={<ProtectedRoute><BuyerProfile /></ProtectedRoute>} />
       <Route path="/deposit" element={<ProtectedRoute allowedRoles={["BUYER", "EV_OWNER"]}><DepositPage /></ProtectedRoute>}/>
+
+      <Route path="/theme-toggle" element={<ThemeToggle />} />
 
       {/* ========== EV OWNER ROUTES ========== */}
       <Route
