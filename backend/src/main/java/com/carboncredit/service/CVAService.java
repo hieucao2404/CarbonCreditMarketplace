@@ -77,9 +77,10 @@ public class CVAService {
         JourneyData journey = journeyDataRepository.findById(journeyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Journey not foudnd"));
 
-        // validate journey status
-        if (journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_VERIFICATION) {
-            throw new BusinessOperationException("Journey must be in PENDING_VERIFICATION status. Current satus: "
+        // validate journey status - Allow both PENDING_VERIFICATION and PENDING_INSPECTION
+        if (journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_VERIFICATION 
+            && journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_INSPECTION) {
+            throw new BusinessOperationException("Journey must be in PENDING_VERIFICATION or PENDING_INSPECTION status. Current status: "
                     + journey.getVerificationStatus());
         }
 
@@ -131,10 +132,11 @@ public class CVAService {
         JourneyData journey = journeyDataRepository.findById(journeyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Journey not found"));
 
-        // validate journey status
-        if (journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_VERIFICATION) {
+        // validate journey status - Allow both PENDING_VERIFICATION and PENDING_INSPECTION
+        if (journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_VERIFICATION 
+            && journey.getVerificationStatus() != JourneyData.VerificationStatus.PENDING_INSPECTION) {
             throw new BusinessOperationException(
-                    "Journey must be in PENDING_VERIFICATION status. Current status: " +
+                    "Journey must be in PENDING_VERIFICATION or PENDING_INSPECTION status. Current status: " +
                             journey.getVerificationStatus());
         }
 

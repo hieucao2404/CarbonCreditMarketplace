@@ -59,10 +59,41 @@ export default function VerifierPendingAll() {
         setJourneys(Array.isArray(journeysData) ? journeysData : []);
       }
 
-      // --- NEW: Load inspections ---
-      if (inspectionsRes.status === "fulfilled" && inspectionsRes.value?.success) {
-        const inspectionsData = inspectionsRes.value.data || [];
-        setInspections(Array.isArray(inspectionsData) ? inspectionsData : []);
+      // --- Load inspections (filter for SCHEDULED only) ---
+      if (inspectionsRes.status === "fulfilled") {
+        // Fix: The response structure is value.data.data, not value.data
+        const response = inspectionsRes.value?.data;
+        if (response && response.success) {
+          const inspectionsData = response.data || [];
+          console.log("=== INSPECTIONS DEBUG ===");
+          console.log("Total appointments received:", inspectionsData.length);
+          console.log("Full data:", JSON.stringify(inspectionsData, null, 2));
+          
+          // Log each appointment status
+          if (Array.isArray(inspectionsData)) {
+            inspectionsData.forEach((appt, idx) => {
+              console.log(`Appointment ${idx + 1}:`, {
+                id: appt.id,
+                status: appt.status,
+                journeyId: appt.journeyId,
+                appointmentTime: appt.appointmentTime
+              });
+            });
+          }
+          
+          // Only show SCHEDULED appointments ready for physical verification/approval
+          const scheduledInspections = Array.isArray(inspectionsData) 
+            ? inspectionsData.filter(appt => appt.status === 'SCHEDULED')
+            : [];
+          
+          console.log("SCHEDULED appointments after filter:", scheduledInspections.length);
+          console.log("Filtered data:", scheduledInspections);
+          setInspections(scheduledInspections);
+        }
+      } else {
+        console.log("=== INSPECTIONS LOAD FAILED ===");
+        console.log("Status:", inspectionsRes.status);
+        console.log("Reason:", inspectionsRes.reason);
       }
 
     } catch (err) {
@@ -262,10 +293,10 @@ export default function VerifierPendingAll() {
           <div className="flex justify-between items-center mb-6">
              <div>
               <h1 className="text-xl font-semibold text-gray-800">
-                Pending Approvals
+                Verification Dashboard
               </h1>
               <p className="text-gray-500 mt-1">
-                Review and approve journey verifications and listing requests
+                Request inspections, verify scheduled appointments, and approve listings
               </p>
             </div>
             <button

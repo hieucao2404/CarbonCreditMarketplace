@@ -77,6 +77,21 @@ public class VerificationController {
     }
 
     /**
+     * (CVA) Get all appointments assigned to this CVA
+     */
+    @GetMapping("/my-appointments")
+    @PreAuthorize("hasRole('CVA')")
+    public ResponseEntity<ApiResponse<List<InspectionAppointmentDTO>>> getMyAppointments(
+            Authentication authentication) {
+
+        User cva = getCurrentUser(authentication);
+        List<InspectionAppointmentDTO> appointments = verificationService.getAppointmentsForCVA(cva.getId());
+        
+        log.info("CVA {} retrieved {} appointments", cva.getUsername(), appointments.size());
+        return ResponseEntity.ok(ApiResponse.success(appointments));
+    }
+
+    /**
      * (CVA) CVA marks the inspection as complete (Approve/Reject).
      */
     @PostMapping("/appointment/{appointmentId}/complete")
