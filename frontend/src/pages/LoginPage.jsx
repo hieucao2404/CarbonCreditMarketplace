@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Leaf } from "lucide-react";
+import { Leaf, Eye, EyeOff } from "lucide-react"; // 👈 thêm icon Eye, EyeOff
 import { motion, AnimatePresence } from "framer-motion";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👈 state hiển thị mật khẩu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -26,8 +27,8 @@ const LoginPage = () => {
       setLoading(true);
 
       const response = await axios.post(API_URL, {
-        username: username,
-        password: password,
+        username,
+        password,
       });
 
       const data = response.data;
@@ -39,10 +40,8 @@ const LoginPage = () => {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
 
-        // Hiện popup thành công
         setShowSuccess(true);
 
-        // Chờ 2.5 giây rồi chuyển trang
         setTimeout(() => {
           setShowSuccess(false);
           switch (user.role) {
@@ -67,24 +66,19 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.message || "Sai tên đăng nhập hoặc mật khẩu!"
-      );
+      setError(err.response?.data?.message || "Sai tên đăng nhập hoặc mật khẩu!");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Hàm xử lý phím Enter
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleLogin();
-    }
+    if (e.key === "Enter") handleLogin();
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-6 relative overflow-hidden">
-      {/* ✅ Popup hoạt ảnh tick xanh */}
+      {/* Popup thành công */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div
@@ -99,7 +93,6 @@ const LoginPage = () => {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 15 }}
             >
-              {/* SVG vẽ vòng tròn + tick */}
               <motion.svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 52 52"
@@ -130,7 +123,6 @@ const LoginPage = () => {
                   transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
                 />
               </motion.svg>
-
               <motion.p
                 className="text-green-600 font-semibold text-lg mt-4"
                 initial={{ opacity: 0, y: 10 }}
@@ -160,7 +152,7 @@ const LoginPage = () => {
       {/* Form đăng nhập */}
       <div
         className="bg-white shadow-lg rounded-2xl p-10 w-full max-w-xl border border-gray-100 relative z-10"
-        onKeyDown={handleKeyPress} // ✅ Gắn sự kiện Enter cho toàn form
+        onKeyDown={handleKeyPress}
       >
         <h2 className="text-lg font-semibold text-gray-800 mb-1">
           Đăng nhập hệ thống
@@ -169,6 +161,7 @@ const LoginPage = () => {
           Nhập thông tin tài khoản của bạn để tiếp tục
         </p>
 
+        {/* Username */}
         <label className="block mb-2 text-gray-700 text-sm font-medium">
           Tên đăng nhập
         </label>
@@ -180,23 +173,39 @@ const LoginPage = () => {
           className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
         />
 
+        {/* Password với icon con mắt */}
         <label className="block mb-2 text-gray-700 text-sm font-medium">
           Mật khẩu
         </label>
-        <input
-          type="password"
-          placeholder="Nhập mật khẩu"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
-        />
+        <div className="relative mb-4">
+          <input
+            type={showPassword ? "text" : "password"} // 👈 toggle hiển thị mật khẩu
+            placeholder="Nhập mật khẩu"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg p-3 pr-10 focus:outline-none focus:ring-2 focus:ring-green-400"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)} // 👈 toggle onClick
+            className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
+          </button>
+        </div>
 
+        {/* Error */}
         {error && (
           <p className="text-red-600 text-sm mb-3 text-center font-medium">
             {error}
           </p>
         )}
 
+        {/* Links */}
         <div className="flex justify-between items-center mb-6 text-sm">
           <button
             onClick={() => navigate("/forgot-password")}
@@ -212,6 +221,7 @@ const LoginPage = () => {
           </button>
         </div>
 
+        {/* Nút đăng nhập */}
         <button
           onClick={handleLogin}
           disabled={loading}

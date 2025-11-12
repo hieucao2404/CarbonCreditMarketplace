@@ -9,7 +9,7 @@ import { walletService } from "../services/walletService";
 import { carbonCreditService } from "../services/carbonCreditService";
 import { transactionService } from "../services/transactionService"
 
-export default function HomePage() {
+export default function Dashboard() {
   const [vehicles, setVehicles] = useState([]);
   const [journeys, setJourneys] = useState([]);
   const [wallet, setWallet] = useState(null);
