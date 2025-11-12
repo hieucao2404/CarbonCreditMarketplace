@@ -524,3 +524,58 @@ CREATE INDEX IF NOT EXISTS idx_appointments_journey_id ON inspection_appointment
 CREATE INDEX IF NOT EXISTS idx_appointments_ev_owner_id ON inspection_appointments(ev_owner_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_cva_id ON inspection_appointments(cva_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON inspection_appointments(status);
+
+-- Inserts 4 fake verification stations in Ho Chi Minh City
+-- Assumes CVA user 'cva1' has UUID '33333333-3333-3333-3333-333333333333'
+
+BEGIN;
+
+INSERT INTO verification_stations (station_id, name, address, operating_hours, is_active, assigned_cva_id)
+VALUES
+(
+    '1a1a1a1a-0001-0001-0001-000000000001',
+    'CCM Verification Station - District 1',
+    '12 Nguyen Hue Blvd, Ben Nghe Ward, District 1, Ho Chi Minh City',
+    'Mon-Fri 8:00 AM - 5:00 PM',
+    true,
+    '33333333-3333-3333-3333-333333333333' -- cva1's ID
+),
+(
+    '1a1a1a1a-0002-0002-0002-000000000002',
+    'GreenWay Inspection - Phu My Hung',
+    '101 Nguyen Van Linh Pkwy, Tan Phong Ward, District 7, Ho Chi Minh City',
+    'Mon-Sat 9:00 AM - 6:00 PM',
+    true,
+    '33333333-3333-3333-3333-333333333333' -- cva1's ID
+),
+(
+    '1a1a1a1a-0003-0003-0003-000000000003',
+    'EV Verifier - Thao Dien (Thu Duc)',
+    '45 Xuan Thuy St, Thao Dien Ward, Thu Duc City, Ho Chi Minh City',
+    'Mon-Fri 9:00 AM - 5:00 PM',
+    true,
+    '33333333-3333-3333-3333-333333333333' -- cva1's ID
+),
+(
+    '1a1a1a1a-0004-0004-0004-000000000004',
+    'Airport Inspection Hub (24/7)',
+    '50 Truong Son St, Ward 2, Tan Binh District, Ho Chi Minh City',
+    '24/7',
+    true,
+    '33333333-3333-3333-3333-333333333333' -- cva1's ID
+)
+ON CONFLICT (station_id) DO NOTHING;
+
+COMMIT;
+
+-- ========= VERIFICATION SCRIPT =========
+-- Run this to confirm the data was inserted
+SELECT 
+    name, 
+    address, 
+    operating_hours, 
+    is_active 
+FROM 
+    verification_stations
+ORDER BY 
+    created_at;

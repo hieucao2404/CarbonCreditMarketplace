@@ -1,10 +1,10 @@
-// src/pages/JourneyManagement.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import { journeyService } from "../services/journeyService";
 import { vehicleService } from "../services/vehicleService";
+import { verificationService } from "../services/verificationService"; 
 import { 
   MapPin, 
   Trash2, 
@@ -15,8 +15,152 @@ import {
   Car,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Send
 } from "lucide-react";
+
+// --- ScheduleModal (NO CHANGES) ---
+function ScheduleModal({ journey, onClose, onSuccess }) {
+  const [stations, setStations] = useState([]);
+  const [loadingStations, setLoadingStations] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedStationId, setSelectedStationId] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+
+  useEffect(() => {
+    verificationService.getActiveStations()
+      .then(res => {
+        if (res.data.success && Array.isArray(res.data.data)) { // Check for array
+          setStations(res.data.data);
+          if (res.data.data.length > 0) {
+            setSelectedStationId(res.data.data[0].id);
+          }
+        } else {
+          setStations([]); // Set to empty array on fail
+          setError("Could not load verification stations.");
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching stations:", err);
+        setError("Could not load verification stations.");
+      })
+      .finally(() => setLoadingStations(false));
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedStationId || !selectedTime) {
+      setError("Please select a station and a time.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      const appointmentId = journey.appointmentId; 
+      if (!appointmentId) {
+        setError("Error: This journey has no linked appointment. Please contact support.");
+        setSubmitting(false);
+        return;
+      }
+      const response = await verificationService.scheduleAppointment(
+        appointmentId,
+        selectedStationId,
+        selectedTime
+      );
+      if (response.data.success) {
+        onSuccess("Appointment scheduled successfully!");
+      } else {
+        setError(response.data.message || "Failed to schedule appointment.");
+      }
+    } catch (err) {
+      console.error("Error scheduling:", err);
+      setError(err.response?.data?.message || "An error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Schedule Your Inspection
+        </h2>
+        <p className="text-sm text-gray-600 mb-6">
+          A CVA has requested a physical inspection for your journey
+          (<span className="font-medium">{journey.distanceKm.toFixed(1)} km</span>).
+          Please select a station and time.
+        </p>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              1. Select a Verification Station
+            </label>
+            {loadingStations ? (
+              <p>Loading stations...</p>
+            ) : stations.length === 0 ? (
+              <p className="text-sm text-yellow-700">No active verification stations found. Please contact support.</p>
+            ) : (
+              <select
+                value={selectedStationId}
+                onChange={(e) => setSelectedStationId(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              >
+                <option value="" disabled>Select a station</option>
+                {stations.map(station => (
+                  <option key={station.id} value={station.id}>
+                    {station.name} ({station.address})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              2. Select a Date and Time
+            </label>
+            <input
+              type="datetime-local"
+              value={selectedTime}
+              onChange={(e) => setSelectedTime(e.target.value)}
+              required
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || loadingStations || !selectedStationId || !selectedTime}
+              className="flex-1 px-6 py-3 rounded-lg font-medium transition bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400"
+            >
+              {submitting ? "Booking..." : "Book Appointment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+// --- END OF MODAL COMPONENT ---
+
 
 export default function JourneyManagement() {
   const navigate = useNavigate();
@@ -27,6 +171,9 @@ export default function JourneyManagement() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedJourney, setSelectedJourney] = useState(null);
 
   const [newJourney, setNewJourney] = useState({
     vehicleId: "",
@@ -42,6 +189,9 @@ export default function JourneyManagement() {
     loadData();
   }, []);
 
+  // --- 
+  // --- THIS FUNCTION IS NOW FIXED ---
+  // ---
   const loadData = async () => {
     setLoading(true);
     try {
@@ -50,22 +200,31 @@ export default function JourneyManagement() {
         vehicleService.getMyVehicles(),
       ]);
 
-      if (journeysRes.success) {
+      // --- FIX: Check if data is an array (not null) before sorting ---
+      if (journeysRes.success && Array.isArray(journeysRes.data)) {
         const sortedJourneys = journeysRes.data.sort(
           (a, b) => new Date(b.journeyDate) - new Date(a.journeyDate)
         );
         setJourneys(sortedJourneys);
+      } else {
+        setJourneys([]); // Set to empty array on fail
       }
 
-      if (vehiclesRes.success) {
+      // --- FIX: Check if data is an array (not null) before setting ---
+      if (vehiclesRes.success && Array.isArray(vehiclesRes.data)) {
         setVehicles(vehiclesRes.data);
+        // Only set default vehicle if the array is not empty
         if (vehiclesRes.data.length > 0) {
           setNewJourney((prev) => ({ ...prev, vehicleId: vehiclesRes.data[0].id }));
         }
+      } else {
+        setVehicles([]); // Set to empty array on fail
       }
     } catch (err) {
       console.error("❌ Error loading data:", err);
       setError("Failed to load data. Please try again.");
+      setJourneys([]); // Also set to empty on crash
+      setVehicles([]);
     } finally {
       setLoading(false);
     }
@@ -131,7 +290,7 @@ export default function JourneyManagement() {
 
       if (response.success) {
         setSuccess("✅ Journey added successfully! Awaiting CVA verification.");
-        setJourneys([response.data, ...journeys]);
+        setJourneys(prev => [response.data, ...prev]);
         setNewJourney({
           vehicleId: vehicles.length > 0 ? vehicles[0].id : "",
           distanceKm: "",
@@ -190,30 +349,31 @@ export default function JourneyManagement() {
     return vehicle ? vehicle.model : "Unknown Vehicle";
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (journey) => {
+    const journeyStatus = journey.verificationStatus;
+    const apptStatus = journey.appointmentStatus; // <-- Get the new field
+
+    let config;
     const statusConfig = {
-      VERIFIED: { 
-        icon: CheckCircle, 
-        color: "bg-green-100 text-green-700 border-green-200", 
-        label: "Verified" 
-      },
-      PENDING: { 
-        icon: Clock, 
-        color: "bg-yellow-100 text-yellow-700 border-yellow-200", 
-        label: "Pending" 
-      },
-      REJECTED: { 
-        icon: XCircle, 
-        color: "bg-red-100 text-red-700 border-red-200", 
-        label: "Rejected" 
-      },
+      VERIFIED: { icon: CheckCircle, color: "bg-green-100 text-green-700 border-green-200", label: "Verified" },
+      PENDING_VERIFICATION: { icon: Clock, color: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "Pending CVA" },
+      PENDING_INSPECTION: { icon: Send, color: "bg-blue-100 text-blue-700 border-blue-200", label: "Inspection Required" },
+      SCHEDULED: { icon: Calendar, color: "bg-purple-100 text-purple-700 border-purple-200", label: "Inspection Scheduled" },
+      REJECTED: { icon: XCircle, color: "bg-red-100 text-red-700 border-red-200", label: "Rejected" },
     };
 
-    const config = statusConfig[status] || { 
-      icon: Clock, 
-      color: "bg-gray-100 text-gray-700 border-gray-200", 
-      label: status 
-    };
+    if (journeyStatus === 'PENDING_INSPECTION') {
+      // If journey is PENDING_INSPECTION, check the appointment status
+      if (apptStatus === 'SCHEDULED') {
+        config = statusConfig.SCHEDULED;
+      } else {
+        // Default to PENDING_INSPECTION (which means REQUESTED)
+        config = statusConfig.PENDING_INSPECTION;
+      }
+    } else {
+      // For all other journey statuses, use them directly
+      config = statusConfig[journeyStatus] || statusConfig.PENDING_VERIFICATION;
+    }
     
     const Icon = config.icon;
 
@@ -225,13 +385,33 @@ export default function JourneyManagement() {
     );
   };
 
+  // --- Modal handler functions (NO CHANGE) ---
+  const openScheduleModal = (journey) => {
+    if (!journey.appointmentId) {
+      alert("Error: Cannot find appointment ID for this journey. Please contact support.");
+      return;
+    }
+    setSelectedJourney(journey);
+    setShowScheduleModal(true);
+  };
+
+  const closeScheduleModal = () => {
+    setSelectedJourney(null);
+    setShowScheduleModal(false);
+  };
+
+  const handleScheduleSuccess = (message) => {
+    setSuccess(message);
+    closeScheduleModal();
+    loadData(); 
+    setTimeout(() => setSuccess(""), 3000);
+  };
+
   return (
     <div className="flex min-h-screen w-screen bg-[#F9FAFB]">
       <Sidebar />
-
       <div className="flex flex-col flex-1">
         <Header />
-
         <main className="flex-1 p-8">
           {/* Back Button */}
           <button
@@ -253,7 +433,8 @@ export default function JourneyManagement() {
               </p>
             </div>
 
-            {!showAddForm && (
+            {/* This button will now appear once loading is false and the form is hidden */}
+            {!showAddForm && !loading && ( // <-- Added !loading check
               <button
                 onClick={() => setShowAddForm(true)}
                 disabled={vehicles.length === 0}
@@ -291,6 +472,7 @@ export default function JourneyManagement() {
           )}
 
           {/* No Vehicles Warning */}
+          {/* --- FIX: This check is now safe --- */}
           {vehicles.length === 0 && !loading && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800 font-medium mb-2">
@@ -311,7 +493,7 @@ export default function JourneyManagement() {
           {/* Add Journey Form */}
           {showAddForm && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-              <div className="flex justify-between items-center mb-6">
+             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800">
                   Add New Journey
                 </h2>
@@ -325,9 +507,7 @@ export default function JourneyManagement() {
                   ✕
                 </button>
               </div>
-
-              <form onSubmit={handleAddJourney}>
-                {/* Vehicle Selection */}
+             <form onSubmit={handleAddJourney}>
                 <div className="mb-6">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     <Car className="w-4 h-4" />
@@ -340,6 +520,7 @@ export default function JourneyManagement() {
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
+                    {/* --- FIX: Safe map --- */}
                     {vehicles.map((vehicle) => (
                       <option key={vehicle.id} value={vehicle.id}>
                         {vehicle.model} - {vehicle.vin}
@@ -347,10 +528,7 @@ export default function JourneyManagement() {
                     ))}
                   </select>
                 </div>
-
-                {/* Journey Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  {/* Distance */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <MapPin className="w-4 h-4" />
@@ -368,8 +546,6 @@ export default function JourneyManagement() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
-
-                  {/* Energy */}
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Zap className="w-4 h-4" />
@@ -387,8 +563,6 @@ export default function JourneyManagement() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
-
-                  {/* Date */}
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Calendar className="w-4 h-4" />
@@ -405,8 +579,6 @@ export default function JourneyManagement() {
                     />
                   </div>
                 </div>
-
-                {/* Locations */}
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -421,7 +593,6 @@ export default function JourneyManagement() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
-
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       End Location (Optional)
@@ -436,8 +607,6 @@ export default function JourneyManagement() {
                     />
                   </div>
                 </div>
-
-                {/* Notes */}
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Notes (Optional)
@@ -451,8 +620,6 @@ export default function JourneyManagement() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                   />
                 </div>
-
-                {/* Buttons */}
                 <div className="flex gap-4">
                   <button
                     type="button"
@@ -502,6 +669,7 @@ export default function JourneyManagement() {
                 <p className="text-gray-500 text-sm mb-4">
                   Add your first EV journey to start earning carbon credits
                 </p>
+                {/* --- FIX: Safe check --- */}
                 {!showAddForm && vehicles.length > 0 && (
                   <button
                     onClick={() => setShowAddForm(true)}
@@ -525,7 +693,7 @@ export default function JourneyManagement() {
                           <h3 className="text-lg font-semibold text-gray-800">
                             {journey.distanceKm ? `${journey.distanceKm.toFixed(1)} km` : "N/A"}
                           </h3>
-                          {getStatusBadge(journey.verificationStatus)}
+                          {getStatusBadge(journey)}
                         </div>
                         <p className="text-sm text-gray-600 mb-1">
                           <span className="font-medium">Vehicle:</span>{" "}
@@ -537,13 +705,34 @@ export default function JourneyManagement() {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => handleDelete(journey.id, journey.distanceKm?.toFixed(1))}
-                        className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="text-sm font-medium">Delete</span>
-                      </button>
+                      <div className="flex flex-col items-end gap-2">
+                        {journey.verificationStatus === 'PENDING_INSPECTION' && journey.appointmentStatus === 'REQUESTED' && (
+                          <button
+                            onClick={() => openScheduleModal(journey)}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            Schedule Inspection
+                          </button>
+                        )}
+                        
+                        {(journey.verificationStatus === 'PENDING_VERIFICATION' || journey.verificationStatus === 'REJECTED') && (
+                          <button
+                            onClick={() => handleDelete(journey.id, journey.distanceKm?.toFixed(1))}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="text-sm font-medium">Delete</span>
+                          </button>
+                        )}
+                        
+                        {journey.verificationStatus === 'PENDING_INSPECTION' && journey.appointmentStatus === 'SCHEDULED' && (
+                           <p className="text-sm text-purple-600 font-medium p-2">Inspection Booked</p>
+                        )}
+                        {(journey.verificationStatus === 'VERIFIED') && (
+                           <p className="text-sm text-green-600 font-medium p-2">Completed</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100">
@@ -588,6 +777,14 @@ export default function JourneyManagement() {
           </div>
         </main>
       </div>
+
+      {showScheduleModal && selectedJourney && (
+        <ScheduleModal
+          journey={selectedJourney}
+          onClose={closeScheduleModal}
+          onSuccess={handleScheduleSuccess}
+        />
+      )}
     </div>
   );
 }

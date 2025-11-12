@@ -39,13 +39,14 @@ public class VerificationController {
      */
     @PostMapping("/journey/{journeyId}/request-inspection")
     @PreAuthorize("hasRole('CVA')")
-    public ResponseEntity<ApiResponse<InspectionAppointment>> requestInspection(
+    public ResponseEntity<ApiResponse<InspectionAppointmentDTO>> requestInspection(
             @PathVariable UUID journeyId,
             Authentication authentication) {
-        
+
         User cva = getCurrentUser(authentication);
-        InspectionAppointment appointment = verificationService.requestInspection(journeyId, cva);
-        return ResponseEntity.ok(ApiResponse.success("Inspection requested. Waiting for EV Owner to schedule.", appointment));
+        InspectionAppointmentDTO appointmentDTO = verificationService.requestInspection(journeyId, cva);
+        return ResponseEntity
+                .ok(ApiResponse.success("Inspection requested. Waiting for EV Owner to schedule.", appointmentDTO));
     }
 
     /**
@@ -54,7 +55,7 @@ public class VerificationController {
     @GetMapping("/stations")
     @PreAuthorize("hasRole('EV_OWNER')")
     public ResponseEntity<ApiResponse<List<VerificationStationDTO>>> getActiveStations() {
-        
+
         List<VerificationStationDTO> stations = verificationService.getActiveStations();
         return ResponseEntity.ok(ApiResponse.success(stations));
     }
@@ -64,13 +65,15 @@ public class VerificationController {
      */
     @PostMapping("/schedule")
     @PreAuthorize("hasRole('EV_OWNER')")
-    public ResponseEntity<ApiResponse<InspectionAppointment>> scheduleAppointment(
+    public ResponseEntity<ApiResponse<InspectionAppointmentDTO>> scheduleAppointment(
             @Valid @RequestBody ScheduleAppointmentRequest request,
             Authentication authentication) {
-        
+
         User evOwner = getCurrentUser(authentication);
-        InspectionAppointment appointment = verificationService.scheduleAppointment(request, evOwner);
-        return ResponseEntity.ok(ApiResponse.success("Appointment scheduled successfully.", appointment));
+        // ▼▼▼ THIS NOW RETURNS THE DTO ▼▼▼
+        InspectionAppointmentDTO appointmentDTO = verificationService.scheduleAppointment(request, evOwner);
+
+        return ResponseEntity.ok(ApiResponse.success("Appointment scheduled successfully.", appointmentDTO));
     }
 
     /**
@@ -78,14 +81,16 @@ public class VerificationController {
      */
     @PostMapping("/appointment/{appointmentId}/complete")
     @PreAuthorize("hasRole('CVA')")
-    public ResponseEntity<ApiResponse<JourneyData>> completeInspection(
+    public ResponseEntity<ApiResponse<JourneyDataDTO>> completeInspection(
             @PathVariable UUID appointmentId,
             @Valid @RequestBody CompleteInspectionRequest request,
             Authentication authentication) {
-        
+
         User cva = getCurrentUser(authentication);
-        JourneyData journey = verificationService.completeInspection(appointmentId, request, cva);
-        String message = request.getIsApproved() ? "Inspection completed and journey approved." : "Inspection completed and journey rejected.";
-        return ResponseEntity.ok(ApiResponse.success(message, journey));
+        // ▼▼▼ THIS NOW RETURNS THE DTO ▼▼▼
+    JourneyDataDTO journeyDTO = verificationService.completeInspection(appointmentId, request, cva);
+        String message = request.getIsApproved() ? "Inspection completed and journey approved."
+                : "Inspection completed and journey rejected.";
+        return ResponseEntity.ok(ApiResponse.success(message, journeyDTO));
     }
 }

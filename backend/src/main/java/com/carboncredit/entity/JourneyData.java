@@ -50,23 +50,26 @@ public class JourneyData {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-   //FILTER FOR CVA VERIFICATION
+    // FILTER FOR CVA VERIFICATION
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", length = 30)
     private VerificationStatus verificationStatus = VerificationStatus.PENDING_VERIFICATION;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verified_by_id")
     private User verifiedBy;
-    
+
     @Column(name = "verification_date")
     private LocalDateTime verificationDate;
-    
+
     @Column(name = "verification_notes", length = 1000)
     private String verificationNotes;
-    
+
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
+
+    @OneToOne(mappedBy = "journey", fetch = FetchType.LAZY)
+    private InspectionAppointment inspectionAppointment;
 
     @OneToOne(mappedBy = "journey", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private CarbonCredit carbonCredit;

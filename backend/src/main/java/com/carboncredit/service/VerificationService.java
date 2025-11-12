@@ -4,10 +4,13 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.hibernate.validator.internal.util.stereotypes.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.carboncredit.dto.CompleteInspectionRequest;
+import com.carboncredit.dto.InspectionAppointmentDTO;
+import com.carboncredit.dto.JourneyDataDTO;
 import com.carboncredit.dto.ScheduleAppointmentRequest;
 import com.carboncredit.dto.VerificationStationDTO;
 import com.carboncredit.entity.InspectionAppointment;
@@ -36,27 +39,29 @@ public class VerificationService {
     private final NotificationService notificationService;
     private final CVAService cvaService; // for final approval/rejection
 
+    
+
     /**
      * Called by CVA. Moves a journey form PENDING to PENDING_INSPECTION
      * and creates a schedulable appointment
      */
     @Transactional
-    public InspectionAppointment requestInspection(UUID journeyId, User cva) {
-        log.info("CVA {} is requesting inspection for journey {}", cva.getUsername());
+    public InspectionAppointmentDTO requestInspection(UUID journeyId, User cva) {
+        log.info("CVA {} is requesting inspection for journey {}", cva.getUsername(), journeyId);
 
         JourneyData journey = journeyDataRepository.findById(journeyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Journey not found" + journeyId));
+                .orElseThrow(() -> new ResourceNotFoundException("Journey not found: " + journeyId));
 
         if (journey.getVerificationStatus() != VerificationStatus.PENDING_VERIFICATION) {
-            throw new BusinessOperationException("Journey is not pending verification");
+            throw new BusinessOperationException("Journey is not pending verification.");
         }
 
         // 1. Update Journey
         journey.setVerificationStatus(VerificationStatus.PENDING_INSPECTION);
-        journey.setVerifiedBy(cva);
+        journey.setVerifiedBy(cva); // Assign this CVA to the journey
         journeyDataRepository.save(journey);
 
-        // Create new Appointment
+        // 2. Create new Appointment
         InspectionAppointment appointment = new InspectionAppointment();
         appointment.setJourney(journey);
         appointment.setEvOwner(journey.getUser());
@@ -72,7 +77,9 @@ public class VerificationService {
 
         log.info("Journey {} status updated to PENDING_INSPECTION. Appointment {} created.", journeyId,
                 savedAppointment.getId());
-        return savedAppointment;
+
+        // ▼▼▼ CHANGE THE RETURN VALUE HERE ▼▼▼
+        return new InspectionAppointmentDTO(savedAppointment); // Return the DTO
     }
 
     /**
@@ -88,7 +95,7 @@ public class VerificationService {
      * Cakked by EVOwner. Books a time and station for an appointment
      */
     @Transactional
-    public InspectionAppointment scheduleAppointment(ScheduleAppointmentRequest request, User evOwner) {
+    public InspectionAppointmentDTO scheduleAppointment(ScheduleAppointmentRequest request, User evOwner) {
         log.info("EVOwner {} is scheduling appointment {}", evOwner.getUsername());
 
         InspectionAppointment appointment = appointmentRepository.findById(request.getAppointmentId())
@@ -102,26 +109,30 @@ public class VerificationService {
             throw new BusinessOperationException("You do not have permission to schedule");
         }
 
-        // 1. Update appointment
+        // 1. Update Appointment
         appointment.setStation(station);
         appointment.setAppointmentTime(request.getAppointmentTime());
         appointment.setStatus(AppointmentStatus.SCHEDULED);
         InspectionAppointment savedAppointment = appointmentRepository.save(appointment);
 
         // 2. Notify CVA
-        notificationService.notifyUser(appointment.getCva(), "Inspection Scheduled",
-                "An EV Owner has scheduled an inspection for journey " + appointment.getJourney().getId() + " on "
-                        + request.getAppointmentTime() + " at " + station.getName());
+        notificationService.notifyUser(
+                appointment.getCva(),
+                "Inspection Scheduled",
+                "An EV Owner has scheduled an inspection for journey " + appointment.getJourney().getId() +
+                        " on " + request.getAppointmentTime() + " at " + station.getName());
 
         log.info("Appointment {} scheduled for {}", appointment.getId(), request.getAppointmentTime());
-        return savedAppointment;
+
+        // ▼▼▼ CHANGE THE RETURN VALUE HERE ▼▼▼
+        return new InspectionAppointmentDTO(savedAppointment); // Return the DTO
     }
 
     /**
      * Called by CVA. Final step for approve or reject the journey after inspection
      */
     @Transactional
-    public JourneyData completeInspection(UUID appointmentId, CompleteInspectionRequest request, User cva) {
+    public JourneyDataDTO completeInspection(UUID appointmentId, CompleteInspectionRequest request, User cva) {
         log.info("CVA {} is completing inspection for appointment {}", cva.getUsername(), appointmentId);
 
         InspectionAppointment appointment = appointmentRepository.findById(appointmentId)
@@ -131,22 +142,48 @@ public class VerificationService {
             throw new BusinessOperationException("This appointment is not in a schedule");
         }
 
-        // 1. Updae appoint ment
+        // 1. Update Appointment
         appointment.setStatus(AppointmentStatus.COMPLETED);
         appointment.setCvaNotes(request.getNotes());
         appointmentRepository.save(appointment);
 
-        // 2 Approve or Rejct the Journey
+        // 2. Approve or Reject the Journey
         JourneyData journey = appointment.getJourney();
         if (request.getIsApproved()) {
-            // Re-use your existing CVAService logic to ensure credits are created
             log.info("Inspection for journey {} is APPROVED.", journey.getId());
-            return cvaService.approveJourneyByCVA(journey.getId(), cva, request.getNotes());
+            JourneyData approvedJourney = cvaService.approveJourneyByCVA(journey.getId(), cva, request.getNotes());
+            // ▼▼▼ WRAP THE RETURN IN A DTO ▼▼▼
+            return new JourneyDataDTO(approvedJourney);
         } else {
-            // Re-use your existing CVAService logic
             log.warn("Inspection for journey {} is REJECTED. Reason: {}", journey.getId(), request.getNotes());
-            return cvaService.rejectJourneyByCVA(journey.getId(), cva, request.getNotes());
+            JourneyData rejectedJourney = cvaService.rejectJourneyByCVA(journey.getId(), cva, request.getNotes());
+            // ▼▼▼ WRAP THE RETURN IN A DTO ▼▼▼
+            return new JourneyDataDTO(rejectedJourney);
         }
 
+    }
+
+    /**
+     * (CVA) Get all appointments for a specific CVA
+     */
+    @Transactional(readOnly = true)
+    public List<InspectionAppointmentDTO> getAppointmentsForCVA(UUID cvaId) {
+        log.info("Fetching appointments for CVA {}", cvaId);
+        
+        // --- THIS IS THE FIX ---
+        // Call the new @Query method 'findAppointmentsByCvaId'
+        // instead of the old 'findByCva_Id'
+        List<InspectionAppointment> appointments = appointmentRepository.findAppointmentsByCvaId(cvaId);
+        
+        // Add a null check just in case, this prevents other 500 errors
+        if (appointments == null) {
+            return List.of(); // Return an empty list, not null
+        }
+        
+        // Filter for only active appointments
+        return appointments.stream()
+                .filter(apt -> apt.getStatus() == AppointmentStatus.REQUESTED || apt.getStatus() == AppointmentStatus.SCHEDULED)
+                .map(InspectionAppointmentDTO::new)
+                .collect(Collectors.toList());
     }
 }
