@@ -290,6 +290,7 @@ export default function BuyerMarket() {
     }
   };
 
+<<<<<<< Updated upstream
   const formatUSD = (usd) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -307,6 +308,15 @@ export default function BuyerMarket() {
       maximumFractionDigits: 0
     }).format(vnd || 0);
   };
+=======
+  const formatCurrency = (usd) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(usd || 0);
+>>>>>>> Stashed changes
 
   const formatDate = (s) =>
     s ? new Date(s).toLocaleDateString("vi-VN", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
