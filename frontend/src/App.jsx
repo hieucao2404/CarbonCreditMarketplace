@@ -6,6 +6,8 @@ import ThemeToggle from "./components/ThemeToggle";
 
 import Profile from "./pages/Profile";
 import BuyerProfile from "./pages/BuyerProfile";
+import DepositPage from "./pages/DepositPage";
+import HomePage1 from "./pages/HomePage1";
 
 // Public pages
 import LoginPage from "./pages/LoginPage";
@@ -15,7 +17,7 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 
 
 // EV Owner pages
-import HomePage from "./pages/HomePage";
+import HomePage from "./pages/Dashboard";
 import VehicleManagement from "./pages/VehicleManagement";
 import CarbonWallet from "./pages/CarbonWallet";
 import CarbonListing from "./pages/CarbonListing";
@@ -46,7 +48,8 @@ function App() {
   return (
     <Routes>
       {/* ========== PUBLIC ROUTES ========== */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/home1" replace />} />
+      <Route path="/home1" element={<HomePage1 />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -54,6 +57,7 @@ function App() {
 
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/buyer/profile" element={<ProtectedRoute><BuyerProfile /></ProtectedRoute>} />
+      <Route path="/deposit" element={<ProtectedRoute allowedRoles={["BUYER", "EV_OWNER"]}><DepositPage /></ProtectedRoute>}/>
 
       <Route path="/theme-toggle" element={<ThemeToggle />} />
 

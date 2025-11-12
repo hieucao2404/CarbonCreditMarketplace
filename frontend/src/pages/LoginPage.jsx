@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { Leaf, Eye, EyeOff } from "lucide-react"; // 👈 thêm icon con mắt
+import { Leaf, Eye, EyeOff } from "lucide-react"; // 👈 thêm icon Eye, EyeOff
 import { motion, AnimatePresence } from "framer-motion";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 trạng thái bật/tắt password
+  const [showPassword, setShowPassword] = useState(false); // 👈 state hiển thị mật khẩu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -25,7 +25,12 @@ const LoginPage = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post(API_URL, { username, password });
+
+      const response = await axios.post(API_URL, {
+        username,
+        password,
+      });
+
       const data = response.data;
 
       if (data.success) {
@@ -36,6 +41,7 @@ const LoginPage = () => {
         localStorage.setItem("user", JSON.stringify(user));
 
         setShowSuccess(true);
+
         setTimeout(() => {
           setShowSuccess(false);
           switch (user.role) {
@@ -72,7 +78,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-6 relative overflow-hidden">
-      {/* ✅ Popup tick xanh */}
+      {/* Popup thành công */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div
@@ -173,7 +179,7 @@ const LoginPage = () => {
         </label>
         <div className="relative mb-4">
           <input
-            type={showPassword ? "text" : "password"} // 👈 thay đổi loại input
+            type={showPassword ? "text" : "password"} // 👈 toggle hiển thị mật khẩu
             placeholder="Nhập mật khẩu"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -181,10 +187,14 @@ const LoginPage = () => {
           />
           <button
             type="button"
-            onClick={() => setShowPassword(!showPassword)} // 👈 toggle con mắt
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-green-600 transition"
+            onClick={() => setShowPassword(!showPassword)} // 👈 toggle onClick
+            className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
           </button>
         </div>
 
