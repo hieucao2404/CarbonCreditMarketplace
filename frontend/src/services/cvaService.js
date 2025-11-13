@@ -13,30 +13,40 @@ export const cvaService = {
   // Get pending listings for verification
   getPendingListings: async (page = 0, size = 50) => {
     const response = await axiosInstance.get("/cva/pending-listings", {
-      params: { page, size }
+      params: { page, size },
     });
     return response.data;
   },
-  
+
   // Reject journey (from New Journeys tab)
   rejectJourney: async (id, reason) => {
-    const response = await axiosInstance.post(`/cva/journey/${id}/reject`, null, {
-      params: { reason },
-    });
+    const response = await axiosInstance.post(
+      `/cva/journey/${id}/reject`,
+      null,
+      {
+        params: { reason },
+      }
+    );
     return response.data;
   },
 
   // Approve listing
   approveListing: async (listingId) => {
-    const response = await axiosInstance.post(`/cva/listing/${listingId}/approve`);
+    const response = await axiosInstance.post(
+      `/cva/listing/${listingId}/approve`
+    );
     return response.data;
   },
 
   // Reject listing
   rejectListing: async (listingId, reason) => {
-    const response = await axiosInstance.post(`/cva/listing/${listingId}/reject`, null, {
-      params: { reason },
-    });
+    const response = await axiosInstance.post(
+      `/cva/listing/${listingId}/reject`,
+      null,
+      {
+        params: { reason },
+      }
+    );
     return response.data;
   },
 
@@ -48,7 +58,9 @@ export const cvaService = {
    */
   requestInspection: async (journeyId) => {
     // --- FIX: Removed leading "/api" ---
-    return axiosInstance.post(`/verification/journey/${journeyId}/request-inspection`);
+    return axiosInstance.post(
+      `/verification/journey/${journeyId}/request-inspection`
+    );
   },
 
   /**
@@ -65,19 +77,21 @@ export const cvaService = {
    * Calls: POST /api/verification/appointment/{appointmentId}/complete
    */
   completeInspection: async (appointmentId, isApproved, notes) => {
-     // --- FIX: Removed leading "/api" ---
-     return axiosInstance.post(`/verification/appointment/${appointmentId}/complete`, {
-      isApproved,
-      notes
-    });
+    // --- FIX: Removed leading "/api" ---
+    return axiosInstance.post(
+      `/verification/appointment/${appointmentId}/complete`,
+      {
+        isApproved,
+        notes,
+      }
+    );
   },
-
 
   // --- Other CVA Functions (unchanged) ---
 
   getApprovedCredits: async (page = 0, size = 100) => {
     const response = await axiosInstance.get("/cva/approved-credits", {
-      params: { page, size }
+      params: { page, size },
     });
     return response.data;
   },
@@ -96,11 +110,39 @@ export const cvaService = {
     const response = await axiosInstance.get("/cva/my-verifications");
     return response.data;
   },
-  
+
   approveJourney: async (id, notes = "") => {
-    const response = await axiosInstance.post(`/cva/journey/${id}/approve`, null, {
-      params: { notes },
-    });
+    const response = await axiosInstance.post(
+      `/cva/journey/${id}/approve`,
+      null,
+      {
+        params: { notes },
+      }
+    );
+    return response.data;
+  },
+  /**
+   * (CVA) Download a generated PDF report
+   * Calls: POST /cva/reports/download
+   * @param {object} reportData - The DTO containing report details
+   */
+  downloadReportPdf: async (reportData) => {
+    const response = await axiosInstance.post(
+      "/cva/reports/download",
+      reportData,
+      {
+        responseType: "blob", // Important: tells axios to expect a file
+      }
+    );
+    return response.data; // This will be the Blob data
+  },
+  /**
+   * (CVA) Get full details for a single listing for review
+   * Calls: GET /cva/listing/{listingId} 
+   * (You will need to create this endpoint on the backend)
+   */
+  getListingForReview: async (id) => {
+    const response = await axiosInstance.get(`/cva/listing/${id}`);
     return response.data;
   },
 };
