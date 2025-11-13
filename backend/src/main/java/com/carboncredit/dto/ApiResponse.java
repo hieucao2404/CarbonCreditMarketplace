@@ -2,7 +2,6 @@ package com.carboncredit.dto;
 
 import java.time.LocalDateTime;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,12 +9,27 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
     private LocalDateTime timestamp;
+
+    // Constructor with all fields except timestamp (auto-set)
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+        this.timestamp = LocalDateTime.now();
+    }
+
+    // All-args constructor for Builder
+    public ApiResponse(boolean success, String message, T data, LocalDateTime timestamp) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+        this.timestamp = timestamp != null ? timestamp : LocalDateTime.now();
+    }
 
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder().success(true).message("Success").data(data).timestamp(LocalDateTime.now())

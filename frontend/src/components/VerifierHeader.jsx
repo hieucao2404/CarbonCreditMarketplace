@@ -15,24 +15,11 @@ export default function VerifierHeader() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      message: "Báo cáo xác minh mới đã được gửi đến bạn.",
-      read: false,
-      time: "10 phút trước",
-    },
-    {
-      id: 2,
-      message: "Có yêu cầu xác minh tín chỉ mới từ EV Owner.",
-      read: false,
-      time: "1 giờ trước",
-    },
-    {
-      id: 3,
-      message: "Cập nhật hệ thống sẽ diễn ra vào 8h tối nay.",
-      read: true,
-      time: "Hôm qua",
-    },
+    { id: 1, message: "✅ Xác minh hoàn tất: Bạn đã phê duyệt 250 tCO₂ từ hành trình #JD-2024-0851 của EV Owner567.", read: false, time: "15 phút trước" },
+    { id: 2, message: "📋 Lịch kiểm tra mới: EV Owner789 đã đặt lịch kiểm tra vào ngày 15/11 lúc 14:00 tại Hà Nội.", read: false, time: "1 giờ trước" },
+    { id: 3, message: "❌ Hành trình bị từ chối: Dữ liệu hành trình #JD-2024-0840 không hợp lệ do không có GPS track.", read: false, time: "2 giờ trước" },
+    { id: 4, message: "📊 Báo cáo xác minh: Bạn đã xác minh thành công 1.250 tCO₂ trong tuần này.", read: true, time: "Hôm qua" },
+    { id: 5, message: "🎯 Nhiệm vụ: Có 8 hành trình chờ xác minh từ lần cuối cùng bạn đăng nhập.", read: true, time: "2 ngày trước" },
   ]);
 
   const navigate = useNavigate();

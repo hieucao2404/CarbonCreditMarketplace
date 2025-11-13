@@ -8,21 +8,27 @@ import {
   Bell,
   Trash2,
 } from "lucide-react";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function BuyerHeader() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "Tín chỉ mới đã được thêm vào Marketplace.", read: false, time: "5 phút trước" },
-    { id: 2, message: "Hóa đơn thanh toán của bạn đã được xác nhận.", read: false, time: "1 giờ trước" },
-    { id: 3, message: "Chương trình khuyến mãi sẽ kết thúc hôm nay!", read: true, time: "Hôm qua" },
-  ]);
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
+
+  // Use the notifications hook
+  const {
+    notifications,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  } = useNotifications(true, 30000); // Auto-refresh every 30 seconds
 
   // Load user từ localStorage
   useEffect(() => {
@@ -55,9 +61,23 @@ export default function BuyerHeader() {
     navigate("/login", { replace: true });
   };
 
-  const handleDeleteNotification = (id) =>
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  const handleDeleteAll = () => setNotifications([]);
+  const handleDeleteNotification = async (id) => {
+    await deleteNotification(id);
+  };
+  
+  const handleDeleteAll = async () => {
+    await deleteAllNotifications();
+  };
+
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+  };
 
   return (
     <header className="flex justify-between items-center bg-white border-b border-gray-200 px-8 py-4 shadow-sm relative">
@@ -104,11 +124,7 @@ export default function BuyerHeader() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() =>
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, read: true }))
-                      )
-                    }
+                    onClick={handleMarkAllAsRead}
                     className="text-xs text-blue-600 hover:text-blue-700 hover:underline transition"
                   >
                     Đánh dấu đã đọc
@@ -135,13 +151,7 @@ export default function BuyerHeader() {
                       className={`relative group px-4 py-3 text-sm cursor-pointer transition-all duration-150 border-b border-gray-100 last:border-none ${
                         !n.read ? "bg-blue-50" : "bg-white"
                       } hover:bg-blue-50`}
-                      onClick={() =>
-                        setNotifications((prev) =>
-                          prev.map((item) =>
-                            item.id === n.id ? { ...item, read: true } : item
-                          )
-                        )
-                      }
+                      onClick={() => handleNotificationClick(n)}
                     >
                       <div className="flex items-start gap-2">
                         {!n.read && (

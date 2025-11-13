@@ -1,10 +1,31 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Leaf, Car, ShoppingBag, Shield, Settings } from "lucide-react";
+import { Leaf, Car, ShoppingBag, Shield, Settings, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import axiosInstance from "../api/axiosInstance";
 
 export default function HomePage1() {
   const navigate = useNavigate();
+  const [platformFee, setPlatformFee] = useState("5%");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlatformFee = async () => {
+      try {
+        const response = await axiosInstance.get("/system-settings/PLATFORM_FEE_PERCENT");
+        if (response.data?.data?.settingValue) {
+          setPlatformFee(`${response.data.data.settingValue}%`);
+        }
+      } catch (error) {
+        console.log("Using default platform fee: 5%");
+        setPlatformFee("5%");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlatformFee();
+  }, []);
 
   const roles = [
     {
@@ -128,6 +149,50 @@ export default function HomePage1() {
           ))}
         </div>
       </main>
+
+      {/* 💰 Platform Fee Information */}
+      <section className="bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200 px-10 py-8">
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-amber-100 rounded-lg">
+              <AlertCircle className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-800 mb-2">
+                💰 Chi phí dịch vụ nền tảng
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Nền tảng Carbon Credit Exchange tính một khoản phí dịch vụ{" "}
+                <span className="font-bold text-amber-600">{platformFee}</span> trên mỗi giao dịch.
+                Khoản phí này hỗ trợ duy trì và phát triển hệ thống, đảm bảo:
+              </p>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="text-amber-600">✓</span> Hỗ trợ khách hàng 24/7
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-amber-600">✓</span> Xác minh giao dịch an toàn
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-amber-600">✓</span> Cơ sở hạ tầng ổn định
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-amber-600">✓</span> Nâng cấp tính năng thường xuyên
+                </li>
+              </ul>
+              <p className="text-gray-600 text-sm mt-3 italic">
+                💡 <strong>Lưu ý:</strong> Tỷ lệ phí có thể thay đổi theo chính sách của nền tảng.
+                Bạn sẽ được thông báo trước bất kỳ thay đổi nào.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
 
       {/* 🌾 Footer */}
       <footer className="bg-white border-t border-gray-200 py-6 text-center text-gray-500 text-sm">

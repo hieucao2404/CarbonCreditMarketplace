@@ -74,7 +74,7 @@ public class DisputeService {
 
         // 5. Notifications and Audit
         User otherParty = transaction.getBuyer().getId().equals(raisedBy.getId()) ? transaction.getSeller() : transaction.getBuyer();
-        notificationService.notifyDisputeCreated(raisedBy, otherParty, transactionId.toString());
+        notificationService.notifyDisputeCreated(raisedBy, otherParty, savedDispute.getId());
         auditService.logDisputeCreated(savedDispute.getId().toString(), transactionId.toString());
 
         log.info("Dispute creation process complete for transaction {}", transactionId);
@@ -119,7 +119,7 @@ public class DisputeService {
         transactionService.updateStatusAfterDisputeResolution(transaction.getId(), finalTransactionStatus, resolution);
 
         // 6. Notifications and Audit
-        notificationService.notifyDisputeResolved(transaction.getBuyer(), transaction.getSeller(), disputeId.toString(), resolution);
+        notificationService.notifyDisputeResolved(transaction.getBuyer(), transaction.getSeller(), disputeId, resolution);
         auditService.logDisputeResolved(disputeId.toString(), resolution);
 
         log.info("Dispute resolution process complete for dispute {}", disputeId);

@@ -22,8 +22,6 @@ import com.carboncredit.entity.CarbonCredit;
 import com.carboncredit.entity.CarbonCredit.CreditStatus;
 import com.carboncredit.entity.CreditListing;
 import com.carboncredit.entity.CreditListing.ListingStatus;
-import com.carboncredit.entity.Dispute;
-import com.carboncredit.entity.Dispute.DisputeStatus;
 import com.carboncredit.entity.Transaction;
 import com.carboncredit.entity.Transaction.TransactionStatus;
 import com.carboncredit.entity.User;
@@ -34,7 +32,6 @@ import com.carboncredit.exception.PaymentException;
 import com.carboncredit.exception.UnauthorizedOperationException;
 import com.carboncredit.repository.CarbonCreditRepository;
 import com.carboncredit.repository.CreditListingRepository;
-import com.carboncredit.repository.DisputeRepository;
 import com.carboncredit.repository.TransactionRepository;
 import com.carboncredit.service.PaymentService.PaymentResult;
 import com.carboncredit.util.DTOMapper;
@@ -49,9 +46,6 @@ public class TransactionService {
 
     @Autowired
     private TransactionRepository transactionRepository;
-
-    @Autowired
-    private DisputeRepository disputeRepository;
 
     @Autowired
     private CreditListingRepository creditListingRepository;
@@ -265,7 +259,7 @@ public class TransactionService {
         // --- Log Audit & Notify ---
         auditService.logTransactionCompleted(completedTransaction.getId().toString(), buyer.getId().toString(),
                 seller.getId().toString());
-        notificationService.notifyTransactionCompleted(buyer, seller, completedTransaction.getId().toString());
+        notificationService.notifyTransactionCompleted(buyer, seller, completedTransaction.getId());
 
         log.info("Transaction {} completed successfully", completedTransaction.getId());
         return completedTransaction; // Return the completed entity
@@ -297,7 +291,7 @@ public class TransactionService {
 
         auditService.logTransactionFailed(failedTransaction.getId().toString(), reason);
         notificationService.notifyTransactionFailed(failedTransaction.getBuyer(),
-                failedTransaction.getSeller(), failedTransaction.getId().toString(), reason);
+                failedTransaction.getSeller(), failedTransaction.getId(), reason);
 
         log.info("Transaction {} marked as CANCELLED", failedTransaction.getId());
         return failedTransaction;

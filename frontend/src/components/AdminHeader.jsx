@@ -10,21 +10,26 @@ import {
   Bell,
   Trash2,
 } from "lucide-react";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function AdminHeader() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "Báo cáo hệ thống đã được cập nhật.", read: false, time: "10 phút trước" },
-    { id: 2, message: "Có yêu cầu xác minh mới từ người dùng.", read: false, time: "1 giờ trước" },
-    { id: 3, message: "Cảnh báo bảo mật: mật khẩu sắp hết hạn.", read: true, time: "Hôm qua" },
-  ]);
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
+
+  const {
+    notifications,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  } = useNotifications(true, 30000);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -57,12 +62,22 @@ export default function AdminHeader() {
     navigate("/login", { replace: true });
   };
 
-  const handleDeleteNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const handleDeleteNotification = async (id) => {
+    await deleteNotification(id);
   };
 
-  const handleDeleteAll = () => {
-    setNotifications([]);
+  const handleDeleteAll = async () => {
+    await deleteAllNotifications();
+  };
+
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
   };
 
   return (
@@ -110,11 +125,7 @@ export default function AdminHeader() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() =>
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, read: true }))
-                      )
-                    }
+                    onClick={handleMarkAllAsRead}
                     className="text-xs text-orange-600 hover:text-orange-700 hover:underline transition"
                   >
                     Đánh dấu đã đọc
@@ -141,13 +152,7 @@ export default function AdminHeader() {
                       className={`relative group px-4 py-3 text-sm cursor-pointer transition-all duration-150 border-b border-gray-100 last:border-none ${
                         !n.read ? "bg-orange-50" : "bg-white"
                       } hover:bg-orange-50`}
-                      onClick={() =>
-                        setNotifications((prev) =>
-                          prev.map((item) =>
-                            item.id === n.id ? { ...item, read: true } : item
-                          )
-                        )
-                      }
+                      onClick={() => handleNotificationClick(n)}
                     >
                       <div className="flex items-start gap-2">
                         {!n.read && (

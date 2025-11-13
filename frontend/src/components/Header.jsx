@@ -15,24 +15,11 @@ export default function Header() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      message: "Giao dịch carbon của bạn đã được xác nhận.",
-      read: false,
-      time: "5 phút trước",
-    },
-    {
-      id: 2,
-      message: "Có ưu đãi mới trong thị trường carbon.",
-      read: false,
-      time: "2 giờ trước",
-    },
-    {
-      id: 3,
-      message: "Cập nhật hệ thống bảo trì vào 9h sáng mai.",
-      read: true,
-      time: "Hôm qua",
-    },
+    { id: 1, message: "🌱 Tín chỉ mới được cấp: Bạn đã kiếm được 25 tCO₂ từ hành trình Hà Nội - Hải Phòng.", read: false, time: "2 giờ trước" },
+    { id: 2, message: "✅ Xác minh hoàn tất: Hành trình #JD-2024-0845 của bạn đã được phê duyệt bởi CVA.", read: false, time: "3 giờ trước" },
+    { id: 3, message: "💰 Bán tín chỉ thành công: 50 tCO₂ của bạn đã bán với giá 2.500.000 VND. Tiền đã chuyển vào ví.", read: false, time: "1 ngày trước" },
+    { id: 4, message: "📋 Lịch kiểm tra: CVA đã xác nhận kiểm tra hành trình của bạn vào 15/11 lúc 14:00.", read: true, time: "Hôm qua" },
+    { id: 5, message: "📊 Báo cáo tháng: Bạn đã giảm 500 kg CO₂ trong tháng 11. Tương đương với việc trồng 8 cây xanh.", read: true, time: "2 ngày trước" },
   ]);
 
   const navigate = useNavigate();

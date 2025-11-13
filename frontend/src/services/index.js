@@ -8,3 +8,4 @@ export { carbonCreditService } from "./carbonCreditService";
 export { creditListingService } from "./creditListingService";
 export { transactionService } from "./transactionService";
 export { walletService } from "./walletService";
+export { default as notificationService } from "./notificationService";
