@@ -77,6 +77,9 @@ public class TransactionService {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private CertificateService certificateService;
+
     // ==== TRANSACTION AND PROCESSING ================
 
     @Transactional
@@ -227,16 +230,15 @@ public class TransactionService {
         }
 
         // --- Perform Atomic Transfers (Idempotency check recommended in WalletService)
-        
+
         log.debug("Transferring cash: {} from {} (Buyer)", price, buyer.getUsername());
         walletService.updateCashBalance(buyer.getId(), price.negate()); // Buyer pays full price
 
         log.debug("Transferring cash: {} to {} (Seller)", sellerReceives, seller.getUsername());
         walletService.updateCashBalance(seller.getId(), sellerReceives); // Seller gets proceeds
-        
+
         log.debug("Transferring platform fee: {} to {} (Platform)", platformFee, platformUser.getUsername());
         walletService.updateCashBalance(platformUser.getId(), platformFee); // Platform gets the fee
-
 
         log.debug("Transferring credits: {} from {} to {}", creditAmount, seller.getUsername(), buyer.getUsername());
         walletService.updateCreditBalance(seller.getId(), creditAmount.negate());
@@ -244,10 +246,11 @@ public class TransactionService {
         // --- Update Entity Statuses ---
         currentTransaction.setStatus(TransactionStatus.COMPLETED);
         currentTransaction.setCompletedAt(LocalDateTime.now());
-        
-        // (This assumes you've added the `platformFee` field to your Transaction.java entity)
+
+        // (This assumes you've added the `platformFee` field to your Transaction.java
+        // entity)
         currentTransaction.setPlatformFee(platformFee);
-        
+
         currentListing.setStatus(ListingStatus.CLOSED);
         currentCredit.setStatus(CreditStatus.SOLD);
 
@@ -255,6 +258,9 @@ public class TransactionService {
         Transaction completedTransaction = transactionRepository.save(currentTransaction);
         creditListingRepository.save(currentListing);
         carbonCreditRepository.save(currentCredit);
+
+        // ---- 2. GENERATE THE CERTIFICATE
+        certificateService.generateCertificate(completedTransaction);
 
         // --- Log Audit & Notify ---
         auditService.logTransactionCompleted(completedTransaction.getId().toString(), buyer.getId().toString(),
