@@ -107,7 +107,7 @@ export default function Transactions() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading transactions...</p>
+              <p className="text-gray-600">Đang tải giao dịch...</p>
             </div>
           </main>
         </div>
@@ -127,17 +127,17 @@ export default function Transactions() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  Transaction History
+                  Lịch sử giao dịch
                 </h2>
                 <p className="text-gray-500 text-sm">
-                  Track and manage your carbon credit transactions ({transactions.length} total)
+                  Theo dõi và quản lý các giao dịch tín chỉ carbon của bạn ({transactions.length} total)
                 </p>
               </div>
               <button
                 onClick={loadTransactions}
                 className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
-                Refresh
+                Tải lại
               </button>
             </div>
 
@@ -152,9 +152,9 @@ export default function Transactions() {
             {transactions.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
                 <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 text-lg font-medium mb-1">No transactions yet</p>
+                <p className="text-gray-500 text-lg font-medium mb-1">Hiện chưa có giao dịch nào</p>
                 <p className="text-gray-400 text-sm">
-                  Your transaction history will appear here
+                  Lịch sử giao dịch của bạn sẽ hiển thị ở đây
                 </p>
               </div>
             ) : (
