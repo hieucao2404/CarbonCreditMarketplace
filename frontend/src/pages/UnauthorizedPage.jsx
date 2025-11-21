@@ -16,11 +16,11 @@ const UnauthorizedPage = () => {
         </div>
         
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Access Denied
+          Không được phép truy cập
         </h1>
         
         <p className="text-gray-600 mb-6">
-          You don't have permission to access this page. Please contact your administrator if you believe this is an error.
+          Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là một nhầm lẫn.
         </p>
         
         <div className="flex gap-3 justify-center">

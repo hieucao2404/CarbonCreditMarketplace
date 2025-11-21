@@ -227,7 +227,7 @@ export default function Dashboard() {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <p className="text-red-800 font-medium">Error</p>
+                <p className="text-red-800 font-medium">Lỗi</p>
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             </div>
@@ -263,21 +263,21 @@ export default function Dashboard() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h2 className="font-semibold text-lg">Your Electric Vehicles</h2>
-                  <p className="text-gray-500 text-sm">Registered vehicles</p>
+                  <h2 className="font-semibold text-lg">Xe điện của bạn</h2>
+                  <p className="text-gray-500 text-sm">Xe đã đăng ký</p>
                 </div>
                 <button
                   onClick={() => (window.location.href = "/vehicles")}
                   className="text-sm text-green-600 hover:text-green-700 font-medium"
                 >
-                  Manage →
+                  Quản lý →
                 </button>
               </div>
 
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                  <p className="text-gray-500 text-sm mt-2">Loading vehicles...</p>
+                  <p className="text-gray-500 text-sm mt-2">Đang tải danh sách xe...</p>
                 </div>
               ) : vehicles.length > 0 ? (
                 <div className="space-y-3">
@@ -307,7 +307,7 @@ export default function Dashboard() {
                     onClick={() => (window.location.href = "/vehicles")}
                     className="text-sm bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
                   >
-                    Add Your First Vehicle
+                    Thêm xe đầu tiên của bạn
                   </button>
                 </div>
               )}
@@ -317,9 +317,9 @@ export default function Dashboard() {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h2 className="font-semibold text-lg">All Journeys</h2>
+                  <h2 className="font-semibold text-lg">Tất cả hành trình</h2>
                   <p className="text-gray-500 text-sm">
-                    {journeys.length} total journey{journeys.length !== 1 ? "s" : ""}
+                    {journeys.length} Tổng hành trình{journeys.length !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function Dashboard() {
               {loading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                  <p className="text-gray-500 text-sm mt-2">Loading journeys...</p>
+                  <p className="text-gray-500 text-sm mt-2">Đang tải hành trình...</p>
                 </div>
               ) : journeys.length > 0 ? (
                 <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -348,13 +348,13 @@ export default function Dashboard() {
 
                       <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
                         <div>
-                          <p className="text-xs text-gray-500">CO₂ Saved</p>
+                          <p className="text-xs text-gray-500">CO₂ Đã lưu</p>
                           <p className="text-sm font-medium text-green-600">
                             {journey.co2ReducedKg ? `${journey.co2ReducedKg.toFixed(2)} kg` : "Pending"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Credits Earned</p>
+                          <p className="text-xs text-gray-500">Tín chỉ nhận được</p>
                           <p className="text-sm font-medium text-blue-600">
                             {journey.co2ReducedKg ? `${(journey.co2ReducedKg / 1000).toFixed(4)} tCO₂` : "Pending"}
                           </p>
@@ -366,7 +366,7 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
                   <span className="text-5xl mb-3 block">🗺️</span>
-                  <p className="text-gray-500 text-sm mb-3">No journeys recorded yet</p>
+                  <p className="text-gray-500 text-sm mb-3">Chưa có hành trình nào được ghi lại</p>
                 </div>
               )}
             </div>

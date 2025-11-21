@@ -29,7 +29,7 @@ export default function BuyerProfile() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-gray-600">
-        Loading profile...
+        Đang tải hồ sơ...
       </div>
     );
   }
@@ -45,7 +45,7 @@ export default function BuyerProfile() {
 
         <main className="flex-1 p-8">
           <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-            My Profile
+            Hồ sơ của tôi
           </h1>
 
           <div className="bg-white shadow-md rounded-xl p-6 max-w-2xl border border-gray-200">

@@ -85,12 +85,12 @@ function ScheduleModal({ journey, onClose, onSuccess }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          Schedule Your Inspection
+          Đặt lịch kiểm tra
         </h2>
         <p className="text-sm text-gray-600 mb-6">
-          A CVA has requested a physical inspection for your journey
+          Một CVA đã yêu cầu kiểm tra thực tế cho hành trình của bạn
           (<span className="font-medium">{journey.distanceKm.toFixed(1)} km</span>).
-          Please select a station and time.
+          Vui lòng chọn trạm và thời gian.
         </p>
 
         {error && (
@@ -102,12 +102,12 @@ function ScheduleModal({ journey, onClose, onSuccess }) {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="text-sm font-medium text-gray-700 mb-2 block">
-              1. Select a Verification Station
+              1. Chọn Trạm Xác Minh
             </label>
             {loadingStations ? (
-              <p>Loading stations...</p>
+              <p>Đang tải trạm...</p>
             ) : stations.length === 0 ? (
-              <p className="text-sm text-yellow-700">No active verification stations found. Please contact support.</p>
+              <p className="text-sm text-yellow-700">Không tìm thấy trạm xác minh hoạt động nào. Vui lòng liên hệ bộ phận hỗ trợ.</p>
             ) : (
               <select
                 value={selectedStationId}
@@ -126,7 +126,7 @@ function ScheduleModal({ journey, onClose, onSuccess }) {
           </div>
           <div className="mb-6">
             <label className="text-sm font-medium text-gray-700 mb-2 block">
-              2. Select a Date and Time
+              2. Chọn ngày và giờ
             </label>
             <input
               type="datetime-local"
@@ -419,17 +419,17 @@ export default function JourneyManagement() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6 transition"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Back to Dashboard</span>
+            <span>Quay lại Bảng điều khiển</span>
           </button>
 
           {/* Page Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                Journey Management
+                Quản lý hành trình
               </h1>
               <p className="text-gray-600">
-                Track your EV journeys and earn carbon credits
+                Theo dõi các hành trình EV của bạn và kiếm tín chỉ carbon
               </p>
             </div>
 
@@ -445,7 +445,7 @@ export default function JourneyManagement() {
                 }`}
               >
                 <Plus className="w-5 h-5" />
-                Add Journey
+                Thêm hành trình
               </button>
             )}
           </div>
@@ -465,7 +465,7 @@ export default function JourneyManagement() {
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
               <span className="text-2xl">✅</span>
               <div>
-                <p className="text-green-800 font-medium">Success!</p>
+                <p className="text-green-800 font-medium">Thành công!</p>
                 <p className="text-green-600 text-sm">{success}</p>
               </div>
             </div>
@@ -476,16 +476,16 @@ export default function JourneyManagement() {
           {vehicles.length === 0 && !loading && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800 font-medium mb-2">
-                📌 No vehicles found
+                📌 Không tìm thấy xe nào
               </p>
               <p className="text-yellow-700 text-sm mb-3">
-                You need to add a vehicle before recording journeys.
+                Bạn cần thêm xe trước khi ghi lại các hành trình.
               </p>
               <button
                 onClick={() => navigate("/vehicles")}
                 className="text-sm bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition"
               >
-                Go to Vehicle Management →
+                Đi đến Quản lý Xe →
               </button>
             </div>
           )}
@@ -495,7 +495,7 @@ export default function JourneyManagement() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800">
-                  Add New Journey
+                  Thêm hành trình mới
                 </h2>
                 <button
                   onClick={() => {
@@ -511,7 +511,7 @@ export default function JourneyManagement() {
                 <div className="mb-6">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     <Car className="w-4 h-4" />
-                    Select Vehicle *
+                    Chọn xe <span className="text-red-600">*</span>
                   </label>
                   <select
                     name="vehicleId"
@@ -532,7 +532,7 @@ export default function JourneyManagement() {
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <MapPin className="w-4 h-4" />
-                      Distance (km) *
+                      Khoảng cách (km) <span className="text-red-600">*</span>
                     </label>
                     <input
                       type="number"
@@ -549,7 +549,7 @@ export default function JourneyManagement() {
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Zap className="w-4 h-4" />
-                      Energy (kWh) *
+                      Năng lượng tiêu thụ (kWh) <span className="text-red-600">*</span>
                     </label>
                     <input
                       type="number"
@@ -566,7 +566,7 @@ export default function JourneyManagement() {
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                       <Calendar className="w-4 h-4" />
-                      Date *
+                      Ngày <span className="text-red-600">*</span>
                     </label>
                     <input
                       type="date"
@@ -582,7 +582,7 @@ export default function JourneyManagement() {
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Start Location (Optional)
+                     Điểm xuất phát (Tùy chọn)
                     </label>
                     <input
                       type="text"
@@ -595,7 +595,7 @@ export default function JourneyManagement() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      End Location (Optional)
+                      Điểm đến (Tùy chọn)
                     </label>
                     <input
                       type="text"
@@ -609,7 +609,7 @@ export default function JourneyManagement() {
                 </div>
                 <div className="mb-6">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Notes (Optional)
+                    Ghi chú (Tùy chọn)
                   </label>
                   <textarea
                     name="notes"
@@ -629,7 +629,7 @@ export default function JourneyManagement() {
                     }}
                     className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
                   >
-                    Cancel
+                    Hủy bỏ
                   </button>
                   <button
                     type="submit"
@@ -650,13 +650,13 @@ export default function JourneyManagement() {
           {/* Journey List */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6">
-              Your Journeys ({journeys.length})
+              Các hành trình của bạn ({journeys.length})
             </h2>
 
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-                <p className="text-gray-500 text-sm mt-4">Loading journeys...</p>
+                <p className="text-gray-500 text-sm mt-4">Đang tải các hành trình...</p>
               </div>
             ) : journeys.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
@@ -664,10 +664,10 @@ export default function JourneyManagement() {
                   <MapPin className="w-16 h-16 text-gray-400 mx-auto" />
                 </div>
                 <p className="text-gray-600 font-medium mb-2">
-                  No journeys recorded yet
+                  Chưa có hành trình nào được ghi lại
                 </p>
                 <p className="text-gray-500 text-sm mb-4">
-                  Add your first EV journey to start earning carbon credits
+                  Thêm hành trình EV đầu tiên của bạn để bắt đầu nhận tín chỉ carbon
                 </p>
                 {/* --- FIX: Safe check --- */}
                 {!showAddForm && vehicles.length > 0 && (
@@ -676,7 +676,7 @@ export default function JourneyManagement() {
                     className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium"
                   >
                     <Plus className="w-5 h-5" />
-                    Add Your First Journey
+                    Thêm hành trình đầu tiên
                   </button>
                 )}
               </div>
@@ -712,7 +712,7 @@ export default function JourneyManagement() {
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
                           >
                             <Calendar className="w-4 h-4" />
-                            Schedule Inspection
+                            Đặt lịch kiểm tra
                           </button>
                         )}
                         
@@ -722,40 +722,40 @@ export default function JourneyManagement() {
                             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                           >
                             <Trash2 className="w-4 h-4" />
-                            <span className="text-sm font-medium">Delete</span>
+                            <span className="text-sm font-medium">Xóa</span>
                           </button>
                         )}
                         
                         {journey.verificationStatus === 'PENDING_INSPECTION' && journey.appointmentStatus === 'SCHEDULED' && (
-                           <p className="text-sm text-purple-600 font-medium p-2">Inspection Booked</p>
+                           <p className="text-sm text-purple-600 font-medium p-2">Đã đặt lịch kiểm tra</p>
                         )}
                         {(journey.verificationStatus === 'VERIFIED') && (
-                           <p className="text-sm text-green-600 font-medium p-2">Completed</p>
+                           <p className="text-sm text-green-600 font-medium p-2">Hoàn tất</p>
                         )}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Energy Used</p>
+                        <p className="text-xs text-gray-500 mb-1">Năng lượng đã sử dụng</p>
                         <p className="text-sm font-medium text-gray-800">
                           {journey.energyConsumedKwh ? `${journey.energyConsumedKwh.toFixed(2)} kWh` : "N/A"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">CO₂ Saved</p>
+                        <p className="text-xs text-gray-500 mb-1">CO₂ Đã lưu</p>
                         <p className="text-sm font-medium text-green-600">
                           {journey.co2Saved ? `${journey.co2Saved.toFixed(2)} kg` : "Pending"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Credits Earned</p>
+                        <p className="text-xs text-gray-500 mb-1">Điểm đã nhận</p>
                         <p className="text-sm font-medium text-blue-600">
                           {journey.creditsEarned ? `${journey.creditsEarned.toFixed(2)} tCO₂` : "Pending"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Route</p>
+                        <p className="text-xs text-gray-500 mb-1">Tuyến đường</p>
                         <p className="text-sm font-medium text-gray-800">
                           {journey.startLocation && journey.endLocation
                             ? `${journey.startLocation} → ${journey.endLocation}`
@@ -766,7 +766,7 @@ export default function JourneyManagement() {
 
                     {journey.notes && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-500 mb-1">Notes</p>
+                        <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
                         <p className="text-sm text-gray-700">{journey.notes}</p>
                       </div>
                     )}

@@ -317,9 +317,9 @@ export default function CarbonWallet() {
             {/* Header section */}
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Carbon Wallet</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Ví Carbon</h2>
                 <p className="text-gray-500 text-sm">
-                  Track your carbon credit balance and transaction history
+                  Theo dõi số dư tín chỉ carbon và lịch sử giao dịch của bạn
                 </p>
               </div>
               <button
@@ -327,7 +327,7 @@ export default function CarbonWallet() {
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span className="text-sm">Refresh</span>
+                <span className="text-sm">Tải lại</span>
               </button>
             </div>
 
@@ -361,21 +361,21 @@ export default function CarbonWallet() {
             <div className="bg-gray-50 rounded-2xl border border-gray-200 shadow-sm p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-gray-700 text-lg">
-                  Recent Activity ({activities.length})
+                  Hoạt động gần đây ({activities.length})
                 </h3>
                 <div className="flex gap-2 text-xs">
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded">Journeys</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">Listings</span>
-                  <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">Sales</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded">Lộ trình</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">Mục đăng bán</span>
+                  <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">Bán hàng</span>
                 </div>
               </div>
 
               {activities.length === 0 ? (
                 <div className="text-center py-12">
                   <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No activity yet</p>
+                  <p className="text-gray-500 text-sm">Chưa có hoạt động nào</p>
                   <p className="text-gray-400 text-xs mt-1">
-                    Your activities will appear here
+                    Các hoạt động của bạn sẽ hiển thị ở đây
                   </p>
                 </div>
               ) : (
@@ -415,9 +415,9 @@ export default function CarbonWallet() {
                 className="p-6 bg-white border border-gray-200 rounded-xl hover:shadow-md transition text-left"
               >
                 <TrendingUp className="w-8 h-8 text-green-600 mb-3" />
-                <h4 className="font-semibold text-gray-800 mb-1">Sell Credits</h4>
+                <h4 className="font-semibold text-gray-800 mb-1">Bán tín chỉ</h4>
                 <p className="text-sm text-gray-500">
-                  List your carbon credits on the marketplace
+                  Đăng bán tín chỉ carbon của bạn trên thị trường
                 </p>
               </button>
 
@@ -426,9 +426,9 @@ export default function CarbonWallet() {
                 className="p-6 bg-white border border-gray-200 rounded-xl hover:shadow-md transition text-left"
               >
                 <Leaf className="w-8 h-8 text-blue-600 mb-3" />
-                <h4 className="font-semibold text-gray-800 mb-1">Earn More Credits</h4>
+                <h4 className="font-semibold text-gray-800 mb-1">Thêm tín chỉ</h4>
                 <p className="text-sm text-gray-500">
-                  Record new EV journeys to earn carbon credits
+                  Ghi lại các hành trình EV mới để kiếm tín chỉ carbon
                 </p>
               </button>
             </div>
