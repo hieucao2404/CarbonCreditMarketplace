@@ -115,7 +115,7 @@ export default function CarbonListing() {
               Carbon Credit Listing
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              List your verified carbon credits for sale with fixed-price or auction
+              Đưa các tín chỉ carbon đã được xác minh của bạn ra bán với giá cố định hoặc đấu giá.
             </p>
 
             {/* Tabs */}
@@ -128,7 +128,7 @@ export default function CarbonListing() {
                     : "bg-white text-gray-500"
                 }`}
               >
-                New Listing
+                Danh sách mới
               </button>
               <button
                 onClick={() => setActiveTab("manage")}
@@ -138,7 +138,7 @@ export default function CarbonListing() {
                     : "bg-white text-gray-500"
                 }`}
               >
-                Manage Listings
+                Quản lý danh sách
               </button>
             </div>
 
@@ -149,7 +149,7 @@ export default function CarbonListing() {
                 <form onSubmit={handleCreateListing}>
                   <div className="mb-4">
                     <label className="text-sm text-gray-700 font-medium">
-                      Select eligible credit
+                      Chọn tín chỉ đủ điều kiện
                     </label>
                     <select
                       value={creditId}
@@ -157,10 +157,10 @@ export default function CarbonListing() {
                       required
                       className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"
                     >
-                      <option value="">--Choose credit--</option>
+                      <option value="">--Chọn tín chỉ--</option>
                       {creditOptions.map((credit) => (
                         <option key={credit.creditId} value={credit.creditId}>
-                          {credit.creditAmount} tCO₂ • Verified:{" "}
+                          {credit.creditAmount} tCO₂ • Đã xác minh:{" "}
                           {credit.verifiedAt?.substring(0, 10)}
                         </option>
                       ))}
@@ -187,7 +187,7 @@ export default function CarbonListing() {
                   {listingType === "auction" && (
                     <div className="mb-4">
                       <label className="text-sm text-gray-700 font-medium">
-                        Auction End Time
+                        Thời gian kết thúc đấu giá
                       </label>
                       <input
                         type="datetime-local"
@@ -223,15 +223,15 @@ export default function CarbonListing() {
                   <div className="flex items-center gap-2 mb-4">
                     <Lightbulb size={18} className="text-green-600" />
                     <h4 className="font-semibold text-gray-800">
-                      AI Price Suggestion
+                      Đề xuất giá AI
                     </h4>
                   </div>
                   <p className="text-green-600 text-3xl font-bold mb-1">
                     {suggestedPrice} $/tCO₂
                   </p>
-                  <p className="text-sm text-gray-500 mb-3">Suggested price</p>
+                  <p className="text-sm text-gray-500 mb-3">Giá đề xuất</p>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm text-gray-600">Confidence:</span>
+                    <span className="text-sm text-gray-600">Độ tin cậy:</span>
                     <div className="flex-1 bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-green-500 h-2 rounded-full"
@@ -243,8 +243,7 @@ export default function CarbonListing() {
                     </span>
                   </div>
                   <div className="bg-blue-50 text-blue-600 text-sm p-3 rounded-lg mb-4 border border-blue-100">
-                    Current market price is up 5% from last week. Demand is
-                    high in your area.
+                    Giá thị trường hiện tại đã tăng 5% so với tuần trước. Nhu cầu tại khu vực của bạn đang cao.
                   </div>
 
                   {/* ✅ Nút Apply Suggestion có chức năng */}
@@ -253,7 +252,7 @@ export default function CarbonListing() {
                     onClick={() => setPrice(suggestedPrice.toString())}
                     className="w-full border border-gray-200 rounded-lg py-2 text-sm font-medium hover:bg-gray-100 transition"
                   >
-                    Apply Suggestion
+                    Áp dụng gợi ý
                   </button>
                 </div>
               </div>
@@ -262,9 +261,9 @@ export default function CarbonListing() {
               <div className="space-y-4">
                 {listings.length === 0 ? (
                   <div className="text-center text-gray-500 py-12 border border-dashed border-gray-300 rounded-lg">
-                    <p className="text-lg font-medium mb-1">No listings yet</p>
+                    <p className="text-lg font-medium mb-1">Chưa có mục đăng bán nào</p>
                     <p className="text-sm">
-                      Create your first listing to get started
+                      Tạo mục đăng bán đầu tiên để bắt đầu
                     </p>
                   </div>
                 ) : (

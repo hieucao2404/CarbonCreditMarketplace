@@ -124,7 +124,7 @@ export default function VerifierApproved() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading verified credits...</p>
+              <p className="text-gray-600">Đang tải tín chỉ đã xác thực...</p>
             </div>
           </main>
         </div>
@@ -154,7 +154,7 @@ export default function VerifierApproved() {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              <span className="text-sm font-medium">Refresh</span>
+              <span className="text-sm font-medium">Tải lại</span>
             </button>
           </div>
 
@@ -173,11 +173,11 @@ export default function VerifierApproved() {
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <Award className="w-5 h-5 text-gray-600" />
                 </div>
-                <p className="text-sm font-medium text-gray-600">Total Processed</p>
+                <p className="text-sm font-medium text-gray-600">Tổng đã xử lý</p>
               </div>
               <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {stats.totalAmount.toFixed(2)} tCO₂ total
+                {stats.totalAmount.toFixed(2)} tCO₂ tổng
               </p>
             </div>
 
@@ -186,11 +186,11 @@ export default function VerifierApproved() {
                 <div className="p-2 bg-green-100 rounded-lg">
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                 </div>
-                <p className="text-sm font-medium text-gray-600">Verified</p>
+                <p className="text-sm font-medium text-gray-600">Đã xác minh</p>
               </div>
               <p className="text-3xl font-bold text-green-600">{stats.verified}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {((stats.verified / stats.total) * 100).toFixed(0)}% approval rate
+                {((stats.verified / stats.total) * 100).toFixed(0)}% tỉ lệ phê duyệt
               </p>
             </div>
 
@@ -199,11 +199,11 @@ export default function VerifierApproved() {
                 <div className="p-2 bg-red-100 rounded-lg">
                   <XCircle className="w-5 h-5 text-red-600" />
                 </div>
-                <p className="text-sm font-medium text-gray-600">Rejected</p>
+                <p className="text-sm font-medium text-gray-600">Bị từ chối</p>
               </div>
               <p className="text-3xl font-bold text-red-600">{stats.rejected}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {((stats.rejected / stats.total) * 100).toFixed(0)}% rejection rate
+                {((stats.rejected / stats.total) * 100).toFixed(0)}% tỉ lệ từ chối
               </p>
             </div>
 
@@ -212,13 +212,13 @@ export default function VerifierApproved() {
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <ShoppingCart className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-sm font-medium text-gray-600">Listed/Sold</p>
+                <p className="text-sm font-medium text-gray-600">Đã niêm yết / Đã bán</p>
               </div>
               <p className="text-3xl font-bold text-blue-600">
                 {credits.filter(c => ["LISTED", "SOLD"].includes(c.status)).length}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                On marketplace
+                Trên thị trường
               </p>
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function VerifierApproved() {
                     : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                Verified ({stats.verified})
+                Đã xác thực ({stats.verified})
               </button>
               <button
                 onClick={() => setFilter("REJECTED")}
@@ -254,7 +254,7 @@ export default function VerifierApproved() {
                     : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                Rejected ({stats.rejected})
+                Đã từ chối ({stats.rejected})
               </button>
             </div>
 
@@ -263,8 +263,8 @@ export default function VerifierApproved() {
               onChange={(e) => setSortBy(e.target.value)}
               className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
             >
-              <option value="date">Sort by Date</option>
-              <option value="amount">Sort by Amount</option>
+              <option value="date">Sắp xếp theo ngày</option>
+              <option value="amount">Sắp xếp theo số tiền</option>
             </select>
           </div>
 

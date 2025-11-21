@@ -140,7 +140,7 @@ export default function Report() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading report...</p>
+              <p className="text-gray-600">Đang tải báo cáo...</p>
             </div>
           </main>
         </div>
@@ -160,9 +160,9 @@ export default function Report() {
             {/* Header Section */}
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Report</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Báo cáo</h2>
                 <p className="text-gray-500 text-sm">
-                  Summary of your CO₂ savings and carbon credit revenue
+                  Tóm tắt lượng CO₂ bạn đã tiết kiệm và doanh thu từ tín chỉ carbon
                 </p>
               </div>
               <button
@@ -170,7 +170,7 @@ export default function Report() {
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span className="text-sm">Refresh</span>
+                <span className="text-sm">Tải lại</span>
               </button>
             </div>
 
@@ -189,7 +189,7 @@ export default function Report() {
                   <div className="flex items-center gap-2">
                     <Leaf className="text-green-600" size={22} />
                     <h3 className="font-semibold text-gray-700">
-                      CO₂ Savings Report
+                      Báo cáo lượng CO₂ tiết kiệm
                     </h3>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export default function Report() {
                     {stats.totalCO2Saved.toFixed(2)} kg
                   </p>
                   <p className="text-sm text-gray-500">
-                    Total CO₂ saved (All time)
+                    Tổng lượng CO₂ đã tiết kiệm (Từ trước đến nay)
                   </p>
                 </div>
 
@@ -208,14 +208,14 @@ export default function Report() {
                     <p className="text-xl font-semibold text-gray-800">
                       {stats.monthCO2.toFixed(2)} kg
                     </p>
-                    <p className="text-sm text-gray-500">This month</p>
+                    <p className="text-sm text-gray-500">Tháng này</p>
                   </div>
                   <div className="w-px bg-gray-200 mx-6" />
                   <div className="flex-1">
                     <p className="text-xl font-semibold text-gray-800">
                       {stats.weekCO2.toFixed(2)} kg
                     </p>
-                    <p className="text-sm text-gray-500">This week</p>
+                    <p className="text-sm text-gray-500">Tuần này</p>
                   </div>
                 </div>
               </div>
@@ -226,7 +226,7 @@ export default function Report() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="text-blue-600" size={22} />
                     <h3 className="font-semibold text-gray-700">
-                      Revenue from Carbon Credits
+                      Doanh thu từ tín chỉ carbon
                     </h3>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function Report() {
                     {stats.totalRevenue.toLocaleString()} $
                   </p>
                   <p className="text-sm text-gray-500">
-                    Total revenue (All time)
+                    Tổng doanh thu (Từ trước đến nay)
                   </p>
                 </div>
 
@@ -245,14 +245,14 @@ export default function Report() {
                     <p className="text-xl font-semibold text-gray-800">
                       {stats.monthRevenue.toLocaleString()} $
                     </p>
-                    <p className="text-sm text-gray-500">This month</p>
+                    <p className="text-sm text-gray-500">Tháng này</p>
                   </div>
                   <div className="w-px bg-gray-200 mx-6" />
                   <div className="flex-1">
                     <p className="text-xl font-semibold text-gray-800">
                       {stats.weekRevenue.toLocaleString()} $
                     </p>
-                    <p className="text-sm text-gray-500">This week</p>
+                    <p className="text-sm text-gray-500">Tuần này</p>
                   </div>
                 </div>
               </div>
@@ -262,7 +262,7 @@ export default function Report() {
             <div className="bg-white border border-gray-300 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <BarChart3 className="text-green-600" size={22} />
-                <h3 className="font-semibold text-gray-700">Activity Overview</h3>
+                <h3 className="font-semibold text-gray-700">Tóm tắt hoạt động</h3>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center border-t border-gray-200 pt-4">
@@ -270,28 +270,28 @@ export default function Report() {
                   <p className="text-2xl font-semibold text-gray-800">
                     {stats.totalDistance.toFixed(1)} km
                   </p>
-                  <p className="text-sm text-gray-500">Total distance</p>
+                  <p className="text-sm text-gray-500">Tổng khoảng cách</p>
                 </div>
                 <div className="w-px bg-gray-200 hidden md:block" />
                 <div>
                   <p className="text-2xl font-semibold text-gray-800">
                     {stats.creditsCreated.toFixed(2)} tCO₂
                   </p>
-                  <p className="text-sm text-gray-500">Credits created</p>
+                  <p className="text-sm text-gray-500">Tín chỉ đã tạo</p>
                 </div>
                 <div className="w-px bg-gray-200 hidden md:block" />
                 <div>
                   <p className="text-2xl font-semibold text-gray-800">
                     {stats.creditsSold.toFixed(2)} tCO₂
                   </p>
-                  <p className="text-sm text-gray-500">Credits sold</p>
+                  <p className="text-sm text-gray-500">Tín chỉ đã bán</p>
                 </div>
                 <div className="w-px bg-gray-200 hidden md:block" />
                 <div>
                   <p className="text-2xl font-semibold text-gray-800">
                     {stats.completedTransactions}
                   </p>
-                  <p className="text-sm text-gray-500">Completed transactions</p>
+                  <p className="text-sm text-gray-500">Giao dịch đã hoàn tất</p>
                 </div>
               </div>
             </div>
