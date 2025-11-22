@@ -236,24 +236,24 @@ export default function Dashboard() {
           {/* Statistics Cards */}
           <div className="grid grid-cols-4 gap-6 mb-8 w-full">
             <StatCard
-              title="Carbon Credit Balance"
+              title="Số dư tín dụng Carbon"
               value={`${wallet?.creditBalance?.toFixed(2) || '0.00'} tCO₂`}  // ✅ Use wallet balance
-              sub={`+${stats.pendingCredits} tCO₂ pending verification`}
+              sub={`+${stats.pendingCredits} tCO₂ đang chờ xác minh`}
             />
             <StatCard
-              title="Verified Journeys"
+              title="Hành trình đã xác minh"
               value={stats.verifiedJourneys}
-              sub={`Out of ${journeys.length} total journeys`}
+              sub={`Trong tổng số ${journeys.length} hành trình`}
             />
             <StatCard
-              title="Total CO₂ Saved"
+              title="Tổng lượng CO₂ được tiết kiệm"
               value={`${stats.totalCO2} kg`}
-              sub="From all verified journeys"
+              sub="Từ tất cả các chuyến đi đã được xác minh"
             />
             <StatCard
-              title="Total Revenue"
+              title="Tổng doanh thu"
               value={`$${revenue.total} USD`}
-              sub={`$${revenue.thisMonth} this month • ${revenue.count} sales`}
+              sub={`$${revenue.thisMonth} doanh số • ${revenue.count} tháng này`}
             />
           </div>
 
@@ -293,7 +293,7 @@ export default function Dashboard() {
                         <p className="font-semibold text-gray-800">{vehicle.model}</p>
                         <p className="text-sm text-gray-500">VIN: {vehicle.vin || "N/A"}</p>
                         <p className="text-xs text-gray-400 mt-1">
-                          Registered: {formatDate(vehicle.registrationDate)}
+                          Đăng ký: {formatDate(vehicle.registrationDate)}
                         </p>
                       </div>
                     </div>
@@ -302,7 +302,7 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
                   <span className="text-5xl mb-3 block">🚗</span>
-                  <p className="text-gray-500 text-sm mb-3">No vehicles registered</p>
+                  <p className="text-gray-500 text-sm mb-3">Không có xe nào được đăng ký</p>
                   <button
                     onClick={() => (window.location.href = "/vehicles")}
                     className="text-sm bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"

@@ -3,18 +3,10 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 
-/**
- * Trang Quản lý xe điện (EV Owner)
- * - Gọi API lấy danh sách xe của user: GET /api/vehicles/my-vehicles
- * - Cho phép thêm xe mới: POST /api/vehicles
- * - Cho phép xóa xe: DELETE /api/vehicles/{id}
- */
-
-
-
 export default function VehicleManagement() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [newVehicle, setNewVehicle] = useState({
     vin: "",
     model: "",
@@ -22,11 +14,34 @@ export default function VehicleManagement() {
   });
 
   const API_BASE = "http://localhost:8080/api/vehicles";
-
-  // 🧩 Lấy token từ localStorage (được backend trả khi login)
   const token = localStorage.getItem("token");
 
-  // 🧭 Load danh sách xe khi vào trang
+  // ---- Popup States ----
+  const [popup, setPopup] = useState({
+    show: false,
+    title: "",
+    message: "",
+    type: "info", // success | error | confirm
+    onConfirm: null,
+  });
+
+  // OPEN POPUP
+  const openPopup = (title, message, type = "info", onConfirm = null) => {
+    setPopup({
+      show: true,
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
+
+  // CLOSE POPUP
+  const closePopup = () => {
+    setPopup({ ...popup, show: false });
+  };
+
+  // ---- Load danh sách xe ----
   useEffect(() => {
     fetchVehicles();
   }, []);
@@ -37,22 +52,23 @@ export default function VehicleManagement() {
       const res = await axios.get(`${API_BASE}/my-vehicles`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.data.success) {
         setVehicles(res.data.data);
       }
     } catch (err) {
-      console.error("❌ Lỗi tải danh sách xe:", err);
-      alert("Không thể tải danh sách xe. Vui lòng đăng nhập lại.");
+      openPopup("Lỗi", "Không thể tải danh sách xe. Vui lòng đăng nhập lại.", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🚗 Thêm xe mới
+  // ---- Thêm xe ----
   const handleAddVehicle = async (e) => {
     e.preventDefault();
+
     if (!newVehicle.vin || !newVehicle.model || !newVehicle.registrationDate) {
-      alert("Vui lòng nhập đầy đủ thông tin xe.");
+      openPopup("Thiếu thông tin", "Vui lòng nhập đầy đủ thông tin xe.", "error");
       return;
     }
 
@@ -60,40 +76,50 @@ export default function VehicleManagement() {
       const res = await axios.post(API_BASE, newVehicle, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.data.success) {
-        alert("✅ Thêm xe thành công!");
         setVehicles([...vehicles, res.data.data]);
         setNewVehicle({ vin: "", model: "", registrationDate: "" });
+
+        openPopup("Thành công", "Thêm xe thành công!", "success");
       }
     } catch (err) {
-      console.error("❌ Lỗi thêm xe:", err);
-      alert(err.response?.data?.message || "Lỗi khi thêm xe mới.");
+      openPopup("Lỗi thêm xe", err.response?.data?.message || "Không thể thêm xe.", "error");
     }
   };
 
-  // 🗑️ Xóa xe
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa xe này không?")) return;
+  // ---- Xóa xe ----
+  const handleDelete = (id) => {
+    openPopup(
+      "Xóa xe",
+      "Bạn có chắc muốn xóa xe này không?",
+      "confirm",
+      () => confirmDelete(id)
+    );
+  };
+
+  const confirmDelete = async (id) => {
     try {
       const res = await axios.delete(`${API_BASE}/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.data.success) {
-        alert("🗑️ Xóa xe thành công!");
         setVehicles(vehicles.filter((v) => v.id !== id));
+        openPopup("Thành công", "Xe đã được xóa thành công!", "success");
       }
     } catch (err) {
-      console.error("❌ Lỗi xóa xe:", err);
-      alert(err.response?.data?.message || "Không thể xóa xe.");
+      openPopup("Lỗi xóa xe", err.response?.data?.message || "Không thể xóa xe.", "error");
     }
   };
 
+  // ==================================================
+  //                     UI
+  // ==================================================
   return (
     <div className="flex min-h-screen w-screen bg-[#F9FAFB] overflow-hidden">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main content */}
       <div className="flex flex-col flex-1 min-h-screen w-full">
         <Header />
 
@@ -106,12 +132,13 @@ export default function VehicleManagement() {
               </p>
             </div>
 
-            {/* Form thêm xe */}
+            {/* ------------ Form thêm xe ---------------- */}
             <form
               onSubmit={handleAddVehicle}
               className="bg-white p-6 rounded-xl shadow border border-gray-200 space-y-4"
             >
               <h3 className="font-semibold text-gray-700">➕ Thêm xe mới</h3>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input
                   type="text"
@@ -122,15 +149,17 @@ export default function VehicleManagement() {
                   }
                   className="border border-gray-300 p-2 rounded-lg"
                 />
+
                 <input
                   type="text"
-                  placeholder="Model xe (VD: Tesla Model 3)"
+                  placeholder="Model xe"
                   value={newVehicle.model}
                   onChange={(e) =>
                     setNewVehicle({ ...newVehicle, model: e.target.value })
                   }
                   className="border border-gray-300 p-2 rounded-lg"
                 />
+
                 <input
                   type="date"
                   value={newVehicle.registrationDate}
@@ -143,6 +172,7 @@ export default function VehicleManagement() {
                   className="border border-gray-300 p-2 rounded-lg"
                 />
               </div>
+
               <button
                 type="submit"
                 className="bg-black text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800"
@@ -151,7 +181,7 @@ export default function VehicleManagement() {
               </button>
             </form>
 
-            {/* Danh sách xe */}
+            {/* ------------ Danh sách xe ---------------- */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-3">
                 Danh sách xe đã đăng ký
@@ -171,21 +201,14 @@ export default function VehicleManagement() {
                       <div className="flex items-center gap-4">
                         <img
                           src="https://img.icons8.com/?size=512&id=59819&format=png"
-                          alt={v.model}
                           className="w-20 h-20 rounded-lg object-cover border border-gray-200"
                         />
                         <div>
                           <h4 className="font-semibold">{v.model}</h4>
-                          <p className="text-sm text-gray-500">
-                            VIN: {v.vin || "Không có"}
-                          </p>
+                          <p className="text-sm text-gray-500">VIN: {v.vin}</p>
                           <p className="text-sm text-gray-500">
                             Ngày đăng ký:{" "}
-                            {v.registrationDate
-                              ? new Date(v.registrationDate).toLocaleDateString(
-                                  "vi-VN"
-                                )
-                              : "—"}
+                            {new Date(v.registrationDate).toLocaleDateString("vi-VN")}
                           </p>
                         </div>
                       </div>
@@ -204,6 +227,66 @@ export default function VehicleManagement() {
           </div>
         </main>
       </div>
+
+      {/* ==================================================
+                 Popup (giống Header.jsx)
+      ================================================== */}
+      {popup.show && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-80 text-center animate-fadeSlideIn">
+            <h2 className="text-lg font-semibold mb-3 text-gray-800">
+              {popup.title}
+            </h2>
+
+            <p className="text-gray-600 mb-5">{popup.message}</p>
+
+            <div className="flex justify-center gap-3">
+              {/* Confirm popup: Hiện 2 nút */}
+              {popup.type === "confirm" ? (
+                <>
+                  <button
+                    onClick={closePopup}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                  >
+                    Hủy
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      closePopup();
+                      popup.onConfirm && popup.onConfirm();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                  >
+                    Xóa
+                  </button>
+                </>
+              ) : (
+                /* Success or Error popup: Chỉ có nút Đóng */
+                <button
+                  onClick={closePopup}
+                  className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition"
+                >
+                  Đóng
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/* Animation */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeSlideIn {
+  animation: fadeSlideIn 0.25s ease-out;
+}
+`;
+document.head.appendChild(style);

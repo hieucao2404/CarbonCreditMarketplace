@@ -180,7 +180,7 @@ export default function CarbonWallet() {
         subtitle: `${journey.vehicle?.model || "EV"} • ${statusText}`,
         amount: journey.verificationStatus === "VERIFIED"
           ? `+${(journey.creditsEarned || journey.co2ReducedKg || 0).toFixed(2)} tCO₂`
-          : "Processing",
+          : "Đang xử lý",
         color: statusColor,
         icon: statusIcon,
       });
@@ -267,23 +267,23 @@ export default function CarbonWallet() {
   const statsData = [
     {
       icon: <Wallet className="text-green-600" size={22} />,
-      title: "Available for Sale",
+      title: "Có sẵn để bán",
       value: `${(wallet?.creditBalance || 0).toFixed(2)} tCO₂`,
-      sub: "Active listings on marketplace",
+      sub: "Danh sách đang hoạt động trên thị trường",
       color: "text-green-600",
     },
     {
       icon: <Clock className="text-orange-500" size={22} />,
-      title: "Pending CVA Approval",
+      title: "Đang chờ phê duyệt CVA",
       value: `${stats.pendingBalance} tCO₂`,
-      sub: "Awaiting listing approval",
+      sub: "Đang chờ phê duyệt niêm yết",
       color: "text-orange-500",
     },
     {
       icon: <TrendingUp className="text-blue-600" size={22} />,
-      title: "Total Sold",
+      title: "Tổng số đã bán",
       value: `${stats.totalSold} tCO₂`,
-      sub: `Revenue: ${stats.totalRevenue} VND`,
+      sub: `Doanh thu: ${stats.totalRevenue} VND`,
       color: "text-blue-600",
     },
   ];
@@ -297,7 +297,7 @@ export default function CarbonWallet() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading wallet...</p>
+              <p className="text-gray-600">Đang tải ví...</p>
             </div>
           </main>
         </div>
