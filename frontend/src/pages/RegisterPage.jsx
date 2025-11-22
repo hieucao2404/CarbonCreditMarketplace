@@ -15,16 +15,58 @@ const RegisterPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const { role, username, email, password, fullName, phone } = formData;
+
+    // Required fields
+    if (!role) newErrors.role = "Vui lòng chọn vai trò";
+    if (!username) newErrors.username = "Vui lòng nhập tên đăng nhập";
+    if (!email) newErrors.email = "Vui lòng nhập email";
+    if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
+    if (!fullName) newErrors.fullName = "Vui lòng nhập họ và tên";
+    if (!phone) newErrors.phone = "Vui lòng nhập số điện thoại";
+
+    // Username validation: only letters, numbers, and underscores
+    if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
+      newErrors.username = "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới (_)";
+    }
+
+    // Password validation: minimum 8 characters
+    if (password && password.length < 8) {
+      newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
+    }
+
+    // Email validation
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Email không hợp lệ";
+    }
+
+    // Phone validation: only numbers and minimum 10 digits
+    if (phone && !/^\d{10,}$/.test(phone)) {
+      newErrors.phone = "Số điện thoại phải có ít nhất 10 chữ số";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async () => {
-    const { role, username, email, password, fullName, phone } = formData;
-    if (!role || !username || !email || !password || !fullName || !phone) {
-      alert("⚠️ Vui lòng nhập đầy đủ thông tin!");
+    // Validate form before submitting
+    if (!validateForm()) {
       return;
     }
 
@@ -151,7 +193,11 @@ const RegisterPage = () => {
           name="role"
           value={formData.role}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.role
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         >
           <option value="">Chọn vai trò</option>
           <option value="EV_OWNER">Chủ sở hữu xe điện</option>
@@ -159,18 +205,31 @@ const RegisterPage = () => {
           {/* <option value="CVA">Người xác minh</option>
           <option value="ADMIN">Quản trị viên</option> */}
         </select>
+        {errors.role && (
+          <p className="text-red-500 text-xs mb-3">{errors.role}</p>
+        )}
 
-        <label className="block mb-2 text-gray-700 text-sm font-medium">
+        <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
           Tên đăng nhập
         </label>
         <input
           type="text"
           name="username"
-          placeholder="Nhập tên đăng nhập"
+          placeholder="vd: user123, john_doe"
           value={formData.username}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.username
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         />
+        {errors.username && (
+          <p className="text-red-500 text-xs mb-3">{errors.username}</p>
+        )}
+        <p className="text-gray-500 text-xs mb-3">
+          Chỉ sử dụng chữ cái, số và dấu gạch dưới (_). Không có khoảng trắng.
+        </p>
 
         <label className="block mb-2 text-gray-700 text-sm font-medium">
           Họ và tên
@@ -181,10 +240,17 @@ const RegisterPage = () => {
           placeholder="Nhập họ và tên"
           value={formData.fullName}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.fullName
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         />
+        {errors.fullName && (
+          <p className="text-red-500 text-xs mb-3">{errors.fullName}</p>
+        )}
 
-        <label className="block mb-2 text-gray-700 text-sm font-medium">
+        <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
           Email
         </label>
         <input
@@ -193,10 +259,17 @@ const RegisterPage = () => {
           placeholder="Nhập email"
           value={formData.email}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.email
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         />
+        {errors.email && (
+          <p className="text-red-500 text-xs mb-3">{errors.email}</p>
+        )}
 
-        <label className="block mb-2 text-gray-700 text-sm font-medium">
+        <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
           Mật khẩu
         </label>
         <input
@@ -205,25 +278,39 @@ const RegisterPage = () => {
           placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)"
           value={formData.password}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.password
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         />
+        {errors.password && (
+          <p className="text-red-500 text-xs mb-3">{errors.password}</p>
+        )}
 
-        <label className="block mb-2 text-gray-700 text-sm font-medium">
+        <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
           Số điện thoại
         </label>
         <input
           type="text"
           name="phone"
-          placeholder="Nhập số điện thoại"
+          placeholder="Nhập số điện thoại (10 chữ số)"
           value={formData.phone}
           onChange={handleChange}
-          className="w-full border border-gray-200 rounded-lg p-3 mb-6 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.phone
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
         />
+        {errors.phone && (
+          <p className="text-red-500 text-xs mb-3">{errors.phone}</p>
+        )}
 
         <button
           onClick={handleRegister}
           disabled={loading}
-          className={`w-full py-3 rounded-lg transition font-medium text-white ${
+          className={`w-full py-3 rounded-lg transition font-medium text-white mt-6 ${
             loading
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-black hover:bg-gray-900"

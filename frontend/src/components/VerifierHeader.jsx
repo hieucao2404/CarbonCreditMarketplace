@@ -8,23 +8,27 @@ import {
   Bell,
   Trash2,
 } from "lucide-react";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function VerifierHeader() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "✅ Xác minh hoàn tất: Bạn đã phê duyệt 250 tCO₂ từ hành trình #JD-2024-0851 của EV Owner567.", read: false, time: "15 phút trước" },
-    { id: 2, message: "📋 Lịch kiểm tra mới: EV Owner789 đã đặt lịch kiểm tra vào ngày 15/11 lúc 14:00 tại Hà Nội.", read: false, time: "1 giờ trước" },
-    { id: 3, message: "❌ Hành trình bị từ chối: Dữ liệu hành trình #JD-2024-0840 không hợp lệ do không có GPS track.", read: false, time: "2 giờ trước" },
-    { id: 4, message: "📊 Báo cáo xác minh: Bạn đã xác minh thành công 1.250 tCO₂ trong tuần này.", read: true, time: "Hôm qua" },
-    { id: 5, message: "🎯 Nhiệm vụ: Có 8 hành trình chờ xác minh từ lần cuối cùng bạn đăng nhập.", read: true, time: "2 ngày trước" },
-  ]);
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
+
+  // Use the notifications hook
+  const {
+    notifications,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  } = useNotifications(true, 30000); // Auto-refresh every 30 seconds
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -57,12 +61,22 @@ export default function VerifierHeader() {
     navigate("/login", { replace: true });
   };
 
-  const handleDeleteNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const handleDeleteNotification = async (id) => {
+    await deleteNotification(id);
   };
 
-  const handleDeleteAll = () => {
-    setNotifications([]);
+  const handleDeleteAll = async () => {
+    await deleteAllNotifications();
+  };
+
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
   };
 
   return (
@@ -110,11 +124,7 @@ export default function VerifierHeader() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() =>
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, read: true }))
-                      )
-                    }
+                    onClick={handleMarkAllAsRead}
                     className="text-xs text-purple-600 hover:text-purple-700 hover:underline transition"
                   >
                     Đánh dấu đã đọc
@@ -141,13 +151,7 @@ export default function VerifierHeader() {
                       className={`relative group px-4 py-3 text-sm cursor-pointer transition-all duration-150 border-b border-gray-100 last:border-none ${
                         !n.read ? "bg-purple-50" : "bg-white"
                       } hover:bg-purple-50`}
-                      onClick={() =>
-                        setNotifications((prev) =>
-                          prev.map((item) =>
-                            item.id === n.id ? { ...item, read: true } : item
-                          )
-                        )
-                      }
+                      onClick={() => handleNotificationClick(n)}
                     >
                       <div className="flex items-start gap-2">
                         {!n.read && (
