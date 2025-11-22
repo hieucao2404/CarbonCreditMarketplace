@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -185,6 +185,14 @@ export default function JourneyManagement() {
     notes: "",
   });
 
+  // --- New modal states to replace native alert/confirm ---
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const confirmActionRef = useRef(null);
+
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageModalMessage, setMessageModalMessage] = useState("");
+
   useEffect(() => {
     loadData();
   }, []);
@@ -314,24 +322,42 @@ export default function JourneyManagement() {
     }
   };
 
-  const handleDelete = async (id, distance) => {
-    if (!window.confirm(`Are you sure you want to delete this ${distance} km journey?`)) return;
+  // --- REPLACED native confirm with in-app confirm modal ---
+  const handleDelete = (id, distance) => {
+    // Open confirm modal and store action in ref
+    setConfirmMessage(`Are you sure you want to delete this ${distance} km journey?`);
+    confirmActionRef.current = async () => {
+      try {
+        const response = await journeyService.deleteJourney(id);
 
-    try {
-      const response = await journeyService.deleteJourney(id);
+        if (response.success) {
+          setSuccess("🗑️ Journey deleted successfully!");
+          setJourneys((prev) => prev.filter((j) => j.id !== id));
 
-      if (response.success) {
-        setSuccess("🗑️ Journey deleted successfully!");
-        setJourneys(journeys.filter((j) => j.id !== id));
-
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        setError(response.message || "Failed to delete journey");
+          setTimeout(() => setSuccess(""), 3000);
+        } else {
+          setError(response.message || "Failed to delete journey");
+        }
+      } catch (err) {
+        console.error("❌ Error deleting journey:", err);
+        setError(err.response?.data?.message || "Failed to delete journey. Please try again.");
       }
-    } catch (err) {
-      console.error("❌ Error deleting journey:", err);
-      setError(err.response?.data?.message || "Failed to delete journey. Please try again.");
+    };
+    setShowConfirm(true);
+  };
+
+  const confirmExecute = async () => {
+    setShowConfirm(false);
+    const action = confirmActionRef.current;
+    if (typeof action === 'function') {
+      await action();
     }
+    confirmActionRef.current = null;
+  };
+
+  const confirmCancel = () => {
+    setShowConfirm(false);
+    confirmActionRef.current = null;
   };
 
   const formatDate = (dateString) => {
@@ -385,10 +411,12 @@ export default function JourneyManagement() {
     );
   };
 
-  // --- Modal handler functions (NO CHANGE) ---
+  // --- Modal handler functions (NO CHANGE except the alert -> message modal) ---
   const openScheduleModal = (journey) => {
     if (!journey.appointmentId) {
-      alert("Error: Cannot find appointment ID for this journey. Please contact support.");
+      // Replaced native alert with in-app message modal
+      setMessageModalMessage("Error: Cannot find appointment ID for this journey. Please contact support.");
+      setShowMessageModal(true);
       return;
     }
     setSelectedJourney(journey);
@@ -455,7 +483,7 @@ export default function JourneyManagement() {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <p className="text-red-800 font-medium">Error</p>
+                <p className="text-red-800 font-medium">Lỗi</p>
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             </div>
@@ -640,7 +668,7 @@ export default function JourneyManagement() {
                         : "bg-green-600 text-white hover:bg-green-700"
                     }`}
                   >
-                    {submitting ? "Adding..." : "Add Journey"}
+                    {submitting ? "Đang thêm..." : "Thêm hành trình"}
                   </button>
                 </div>
               </form>
@@ -691,17 +719,21 @@ export default function JourneyManagement() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-gray-800">
-                            {journey.distanceKm ? `${journey.distanceKm.toFixed(1)} km` : "N/A"}
+                            {getVehicleModel(journey.vehicle?.id)}
                           </h3>
                           {getStatusBadge(journey)}
                         </div>
                         <p className="text-sm text-gray-600 mb-1">
-                          <span className="font-medium">Vehicle:</span>{" "}
+                          <span className="font-medium">Phương tiện:</span>{" "}
                           {getVehicleModel(journey.vehicle?.id)}
                         </p>
                         <p className="text-sm text-gray-600">
-                          <span className="font-medium">Date:</span>{" "}
+                          <span className="font-medium">Ngày:</span>{" "}
                           {formatDate(journey.journeyDate)}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          <span className="font-medium">Khoảng cách:</span>{" "}
+                          {journey.distanceKm ? `${journey.distanceKm.toFixed(1)} km` : "—"}
                         </p>
                       </div>
 
@@ -778,6 +810,48 @@ export default function JourneyManagement() {
         </main>
       </div>
 
+      {/* --- Confirm Modal (replaces window.confirm) --- */}
+      {showConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-96 text-center animate-fadeSlideIn">
+            <h2 className="text-lg font-semibold mb-3 text-gray-800">Xác nhận</h2>
+            <p className="text-gray-600 mb-5">{confirmMessage}</p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={confirmCancel}
+                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmExecute}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Message Modal (replaces window.alert) --- */}
+      {showMessageModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-96 text-center animate-fadeSlideIn">
+            <h2 className="text-lg font-semibold mb-3 text-gray-800">Thông báo</h2>
+            <p className="text-gray-600 mb-5">{messageModalMessage}</p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowMessageModal(false)}
+                className="px-6 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showScheduleModal && selectedJourney && (
         <ScheduleModal
           journey={selectedJourney}
@@ -788,3 +862,16 @@ export default function JourneyManagement() {
     </div>
   );
 }
+
+/* 💫 Animation */
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeSlideIn {
+  animation: fadeSlideIn 0.25s ease-out;
+}
+`;
+document.head.appendChild(style);

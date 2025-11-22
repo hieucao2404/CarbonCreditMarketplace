@@ -170,8 +170,8 @@ export default function CarbonListing() {
                   <div className="mb-4">
                     <label className="text-sm text-gray-700 font-medium">
                       {listingType === "fixed"
-                        ? "Price ($/tCO₂)"
-                        : "Starting Price ($/tCO₂)"}
+                        ? "Giá ($/tCO₂)"
+                        : "Bắt đầu ($/tCO₂)"}
                     </label>
                     <input
                       type="number"
@@ -203,7 +203,7 @@ export default function CarbonListing() {
                     disabled={submitting}
                     className="w-full bg-black text-white py-2.5 rounded-lg mt-4 hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {submitting ? "Submitting..." : "Request Listing"}
+                    {submitting ? "Đang nộp..." : "Yêu cầu niêm yết"}
                   </button>
 
                   {error && (
