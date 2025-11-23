@@ -11,6 +11,27 @@ export default function AdminUserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(null);
+  const [addLoading, setAddLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [userVehicles, setUserVehicles] = useState([]);
+  const [addFormData, setAddFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    fullName: "",
+    phone: "",
+    role: "CVA",
+  });
+  const [addError, setAddError] = useState("");
+  const [editFormData, setEditFormData] = useState({
+    email: "",
+    fullName: "",
+    phone: "",
+  });
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     loadUsers();
@@ -44,6 +65,176 @@ export default function AdminUserManagement() {
     } catch (e) {
       console.error("❌ Error deleting user:", e.response?.data || e.message);
       alert(e.response?.data?.message || "Không thể xóa người dùng.");
+    }
+  };
+
+  const handleAddFormChange = (e) => {
+    const { name, value } = e.target;
+    setAddFormData({ ...addFormData, [name]: value });
+  };
+
+  const validateAddForm = () => {
+    const { username, email, password, fullName, phone, role } = addFormData;
+
+    if (!username.trim()) {
+      setAddError("Vui lòng nhập tên đăng nhập");
+      return false;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setAddError("Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới");
+      return false;
+    }
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAddError("Vui lòng nhập email hợp lệ");
+      return false;
+    }
+
+    if (!password.trim() || password.length < 8) {
+      setAddError("Mật khẩu phải có ít nhất 8 ký tự");
+      return false;
+    }
+
+    if (!fullName.trim()) {
+      setAddError("Vui lòng nhập họ và tên");
+      return false;
+    }
+
+    if (!phone.trim() || !/^\d{10,}$/.test(phone)) {
+      setAddError("Số điện thoại phải có ít nhất 10 chữ số");
+      return false;
+    }
+
+    if (!role) {
+      setAddError("Vui lòng chọn vai trò");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    setAddError("");
+
+    if (!validateAddForm()) {
+      return;
+    }
+
+    setAddLoading(true);
+
+    try {
+      const response = await axiosInstance.post("/users/register", addFormData);
+      console.log("✅ User created:", response.data);
+
+      alert(`Tạo người dùng ${addFormData.username} thành công!`);
+      setShowAddModal(false);
+      setAddFormData({
+        username: "",
+        email: "",
+        password: "",
+        fullName: "",
+        phone: "",
+        role: "CVA",
+      });
+      loadUsers(); // Reload the list
+    } catch (e) {
+      console.error("❌ Error creating user:", e.response?.data || e.message);
+      setAddError(
+        e.response?.data?.message || "Không thể tạo người dùng. Vui lòng thử lại."
+      );
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleOpenDetail = (user) => {
+    setShowDetailModal(user);
+    setEditFormData({
+      email: user.email || "",
+      fullName: user.fullName || "",
+      phone: user.phone || "",
+    });
+    setEditError("");
+    setUserVehicles([]);
+
+    // Load vehicles if user is EV_OWNER
+    if (user.role === "EV_OWNER") {
+      loadUserVehicles(user.id);
+    }
+  };
+
+  const loadUserVehicles = async (userId) => {
+    setVehiclesLoading(true);
+    try {
+      const response = await axiosInstance.get(`/vehicles/admin/user/${userId}`);
+      console.log("🚗 User Vehicles:", response.data);
+
+      if (response.data?.data) {
+        setUserVehicles(response.data.data);
+      }
+    } catch (e) {
+      console.error("❌ Error loading vehicles:", e.response?.data || e.message);
+      setUserVehicles([]);
+    } finally {
+      setVehiclesLoading(false);
+    }
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({ ...editFormData, [name]: value });
+  };
+
+  const validateEditForm = () => {
+    const { email, fullName, phone } = editFormData;
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEditError("Vui lòng nhập email hợp lệ");
+      return false;
+    }
+
+    if (!fullName.trim()) {
+      setEditError("Vui lòng nhập họ và tên");
+      return false;
+    }
+
+    if (!phone.trim() || !/^\d{10,}$/.test(phone)) {
+      setEditError("Số điện thoại phải có ít nhất 10 chữ số");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    setEditError("");
+
+    if (!validateEditForm() || !showDetailModal) {
+      return;
+    }
+
+    setUpdateLoading(true);
+
+    try {
+      const response = await axiosInstance.put(
+        `/users/${showDetailModal.id}`,
+        editFormData
+      );
+      console.log("✅ User updated:", response.data);
+
+      alert(`Cập nhật người dùng ${showDetailModal.username} thành công!`);
+      setShowDetailModal(null);
+      loadUsers(); // Reload the list
+    } catch (e) {
+      console.error("❌ Error updating user:", e.response?.data || e.message);
+      setEditError(
+        e.response?.data?.message || "Không thể cập nhật người dùng. Vui lòng thử lại."
+      );
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
@@ -141,13 +332,22 @@ export default function AdminUserManagement() {
                 Xem và quản lý tất cả người dùng trên nền tảng ({filteredUsers.length} người dùng)
               </p>
             </div>
-            <button
-              onClick={loadUsers}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span className="text-sm">Tải lại</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="text-sm">Thêm người dùng</span>
+              </button>
+              <button
+                onClick={loadUsers}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="text-sm">Tải lại</span>
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -246,9 +446,9 @@ export default function AdminUserManagement() {
                     {/* Actions */}
                     <div className="flex gap-2 ml-3">
                       <button
-                        onClick={() => alert(`Chức năng chỉnh sửa người dùng ${user.username} sẽ được phát triển.`)}
+                        onClick={() => handleOpenDetail(user)}
                         className="p-1.5 rounded-lg hover:bg-blue-50 transition"
-                        title="Chỉnh sửa"
+                        title="Xem chi tiết và chỉnh sửa"
                       >
                         <Edit3 size={16} className="text-blue-600" />
                       </button>
@@ -267,6 +467,309 @@ export default function AdminUserManagement() {
           )}
         </main>
       </div>
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Thêm người dùng mới</h3>
+
+            {addError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{addError}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleAddUser} className="space-y-4">
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên đăng nhập
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={addFormData.username}
+                  onChange={handleAddFormChange}
+                  placeholder="user_name"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Chỉ chữ cái, số và dấu gạch dưới
+                </p>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={addFormData.email}
+                  onChange={handleAddFormChange}
+                  placeholder="user@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mật khẩu
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={addFormData.password}
+                  onChange={handleAddFormChange}
+                  placeholder="Tối thiểu 8 ký tự"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ và tên
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={addFormData.fullName}
+                  onChange={handleAddFormChange}
+                  placeholder="Nguyễn Văn A"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={addFormData.phone}
+                  onChange={handleAddFormChange}
+                  placeholder="0123456789"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vai trò
+                </label>
+                <select
+                  name="role"
+                  value={addFormData.role}
+                  onChange={handleAddFormChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="CVA">Kiểm toán viên (CVA)</option>
+                  <option value="ADMIN">Quản trị viên (ADMIN)</option>
+                </select>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setAddError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-400"
+                >
+                  {addLoading ? "Đang tạo..." : "Tạo người dùng"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Detail & Edit Modal */}
+      {showDetailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Chi tiết người dùng - {showDetailModal.username}
+              </h3>
+              <button
+                onClick={() => setShowDetailModal(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{editError}</p>
+              </div>
+            )}
+
+            {/* User Information Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              {/* Read-only Info */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">User ID</p>
+                <p className="text-sm font-medium text-gray-800">{showDetailModal.id}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Tên đăng nhập</p>
+                <p className="text-sm font-medium text-gray-800">{showDetailModal.username}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Vai trò</p>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getRoleColor(showDetailModal.role)}`}>
+                  {getRoleLabel(showDetailModal.role)}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(showDetailModal.status)}`}>
+                  {getStatusLabel(showDetailModal.status)}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Ngày tạo</p>
+                <p className="text-sm font-medium text-gray-800">{formatDate(showDetailModal.createdAt)}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Cập nhật lần cuối</p>
+                <p className="text-sm font-medium text-gray-800">{formatDate(showDetailModal.updatedAt)}</p>
+              </div>
+            </div>
+
+            {/* Editable Form */}
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <h4 className="font-semibold text-gray-700 mb-3">Thông tin có thể chỉnh sửa</h4>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={editFormData.email}
+                  onChange={handleEditFormChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ và tên
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={editFormData.fullName}
+                  onChange={handleEditFormChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={editFormData.phone}
+                  onChange={handleEditFormChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Vehicles Section - Only for EV_OWNER */}
+              {showDetailModal.role === "EV_OWNER" && (
+                <div className="mt-6 pt-6 border-t">
+                  <h4 className="font-semibold text-gray-700 mb-3">🚗 Xe điện đã đăng ký</h4>
+
+                  {vehiclesLoading ? (
+                    <div className="text-center py-4">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <p className="text-sm text-gray-500 mt-2">Đang tải thông tin xe...</p>
+                    </div>
+                  ) : userVehicles.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-4 text-center">Người dùng này chưa đăng ký xe nào</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {userVehicles.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className="border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="text-2xl">🚗</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h5 className="font-medium text-gray-800">{vehicle.model}</h5>
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                  {vehicle.journeyCount} hành trình
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
+                                <strong>VIN:</strong> {vehicle.vin}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                <strong>Đăng ký:</strong> {new Date(vehicle.registrationDate).toLocaleDateString("vi-VN")}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                <strong>ID:</strong> {vehicle.id.toString().substring(0, 12)}...
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowDetailModal(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateLoading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+                >
+                  {updateLoading ? "Đang cập nhật..." : "Lưu thay đổi"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (

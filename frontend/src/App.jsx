@@ -40,6 +40,7 @@ import VerifierReports from "./pages/VerifierReports";
 // Admin pages
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUserManagement from "./pages/AdminUserManagement";
+import AdminVehicleManagement from "./pages/AdminVehicleManagement";
 import AdminTransactionManagement from "./pages/AdminTransactionManagement";
 import AdminStatistics from "./pages/AdminStatistics";
 import AdminSystemSettings from "./pages/AdminSystemSettings";
@@ -209,6 +210,14 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
             <AdminUserManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/vehicles"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <AdminVehicleManagement />
           </ProtectedRoute>
         }
       />

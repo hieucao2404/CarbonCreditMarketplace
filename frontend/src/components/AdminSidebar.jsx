@@ -7,6 +7,7 @@ import {
   Settings,
   BarChart3,
   Leaf,
+  Car,
 } from "lucide-react";
 
 export default function AdminSidebar() {
@@ -16,6 +17,7 @@ export default function AdminSidebar() {
   const menu = [
     { icon: <Home size={18} />, text: "Tổng quan", path: "/admin" },
     { icon: <Users size={18} />, text: "Quản lý người dùng", path: "/admin/users" },
+    { icon: <Car size={18} />, text: "Quản lý xe điện", path: "/admin/vehicles" },
     { icon: <FileText size={18} />, text: "Quản lý giao dịch", path: "/admin/transactions" },
     { icon: <BarChart3 size={18} />, text: "Thống kê", path: "/admin/stats" },
     { icon: <Settings size={18} />, text: "Cài đặt hệ thống", path: "/admin/settings" },
