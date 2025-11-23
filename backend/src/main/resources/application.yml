@@ -11,7 +11,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/carbon_credit_db
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:Hieu0935828519} 
+    password: ${DB_PASSWORD:1234} 
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -33,8 +33,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${EMAIL_USERNAME:hieucao240402@gmail.com}
-    password: ${EMAIL_PASSWORD:vkhgktsoucirmfvf}  # App password WITHOUT spaces
+    username: ${EMAIL_USERNAME:thanhtuan210904@gmail.com}
+    password: ${EMAIL_PASSWORD:smux mhtnngdkzzxw}  # App password WITHOUT spaces vkhgktsoucirmfvf
     properties:
       mail:
         smtp:
