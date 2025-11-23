@@ -429,13 +429,13 @@
     BEGIN;
 
     -- Step 1: Create the 'platform_revenue' user.
-    -- The password_hash below is a valid bcrypt hash for the password: 'password123'
+    -- The password_hash below is a valid bcrypt hash for the password: 'SuperAdmin@2025'
     INSERT INTO users (user_id, username, email, password_hash, role, full_name, phone)
     VALUES (
         '00000000-0000-0000-0000-000000000001', -- Static UUID for the system
         'platform_revenue',
         'platform@yourdomain.com',
-        '$2a$10$E/q.d.a.s.e.c.u.r.e.p.a.s.s.w.o.r.d/O.G.B.C.C.q.m.G.R.A', -- Valid hash for 'password123'
+        '$2b$10$4ulUY2qR7.9SFBpT2k7cDOeoTGfEPwd/1u8lDCoj0BmJRGGtOkpv.', -- Valid hash for 'SuperAdmin@2025'
         'ADMIN',
         'Platform Revenue Account',
         'SYS_REVENUE' -- Unique placeholder phone

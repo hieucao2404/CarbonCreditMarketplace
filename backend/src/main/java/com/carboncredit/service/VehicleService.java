@@ -114,6 +114,14 @@ public class VehicleService {
         log.info("Vehicle {} deleted successfully", vehicleId);
     }
 
+    public void deleteVehicleAdmin(UUID vehicleId) {
+        log.info("Attempting to delete vehicle {} by admin", vehicleId);
+        
+        Vehicle vehicle = findById(vehicleId);
+        vehicleRepository.delete(vehicle);
+        log.info("Vehicle {} deleted successfully by admin", vehicleId);
+    }
+
     @Transactional(readOnly = true)
     public List<Vehicle> getAllVehicles() {
         return vehicleRepository.findAll();

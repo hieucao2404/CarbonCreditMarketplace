@@ -175,10 +175,10 @@ public class VehicleController {
     }
 
     /**
-     * (EV_OWNER) delete a vehicle
+     * (EV_OWNER / ADMIN) delete a vehicle
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('EV_OWNER')")
+    @PreAuthorize("hasAnyRole('EV_OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteVehicle(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -186,7 +186,14 @@ public class VehicleController {
         log.info("Received request to delete vehicle: {}", id);
         try {
             User currentUser = getCurrentUser(authentication);
-            vehicleService.deleteVehicle(id, currentUser);
+            
+            // If admin, skip ownership check
+            if (currentUser.getRole() == User.UserRole.ADMIN) {
+                vehicleService.deleteVehicleAdmin(id);
+            } else {
+                // If EV_OWNER, verify ownership
+                vehicleService.deleteVehicle(id, currentUser);
+            }
             return ResponseEntity.ok(ApiResponse.success("Vehicle deleted successfully", null));
         } catch (ResourceNotFoundException e) {
             log.warn("Failed to delete vehicle, not found: {}", id);
@@ -216,6 +223,32 @@ public class VehicleController {
             log.error("Error fetching all vehicles: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to fetch all vehicles: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * (ADMIN) Get all vehicles for a specific user by their User ID.
+     */
+    @GetMapping("/admin/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<VehicleDTO>>> getVehiclesByUserId(@PathVariable UUID userId) {
+        log.info("Admin fetching vehicles for user: {}", userId);
+        try {
+            // Verify user exists
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+            List<Vehicle> vehicles = vehicleService.findByUser(user);
+            List<VehicleDTO> vehicleDTOs = DTOMapper.toVehicleDTOList(vehicles);
+            return ResponseEntity.ok(ApiResponse.success(vehicleDTOs));
+        } catch (ResourceNotFoundException e) {
+            log.warn("User not found: {}", userId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error fetching vehicles for user {}: ", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to fetch vehicles: " + e.getMessage()));
         }
     }
 }
