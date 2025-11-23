@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,5 +32,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u WHERE u.email = :input OR u.phone = :input")
     Optional<User> findByEmailOrPhone(String input);
+
+     // ✅ NEW: Email Verification methods
+    Optional<User> findByEmailVerificationToken(String token);
+    
+    @Query("SELECT u FROM User u WHERE u.isEmailVerified = false AND u.createdAt < :before")
+    List<User> findUnverifiedUsersOlderThan(LocalDateTime before);
+
+    // ✅ NEW: Password Reset methods
+    Optional<User> findByPasswordResetToken(String token);
+    
+    @Query("SELECT u FROM User u WHERE u.passwordResetExpiresAt < CURRENT_TIMESTAMP AND u.passwordResetToken IS NOT NULL")
+    List<User> findExpiredPasswordResetTokens();
 
 }

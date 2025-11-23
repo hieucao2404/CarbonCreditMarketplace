@@ -48,6 +48,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/users/register", "api/users/login").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll() // ✅ Allow all auth endpoints (register, verify-email, forgot-password, reset-password)
                         .requestMatchers(GET, "/api/listings").permitAll()
                         .requestMatchers(GET, "/api/listings/**").permitAll()
                         //.requestMatchers("/api/users/register", "api/users/login").permitAll()

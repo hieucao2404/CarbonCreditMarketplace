@@ -29,6 +29,36 @@ spring:
       name: admin
       password: admin123
 
+  # ✅ Email Configuration (MUST be under spring:)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:hieucao240402@gmail.com}
+    password: ${EMAIL_PASSWORD:vkhgktsoucirmfvf}  # App password WITHOUT spaces
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+  # ✅ Application-specific email settings
+app:
+  mail:
+    from: carbon-credit@example.com
+    sender-name: Carbon Credit Marketplace
+    verification-link-expiry: 24  # hours
+    password-reset-link-expiry: 1 # hour
+  task:
+    scheduling:
+      enabled: true
+      pool:
+        size: 2
+
 jwt:
   secret: ${JWT_SECRET:carbon-credit-marketplace-super-secret-key-minimum-256-bits-required-for-hs256}
   expiration: 86400000 # 24 hours
@@ -60,4 +90,6 @@ momo:
 
 currency:
   usd-to-vnd-rate: 26330 # 1 USD = 26,330 VND
+
+
 

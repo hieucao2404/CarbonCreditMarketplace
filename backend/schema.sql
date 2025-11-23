@@ -579,3 +579,126 @@ FROM
     verification_stations
 ORDER BY 
     created_at;
+
+-- ============================================
+-- MIGRATION: Email Verification & Password Reset
+-- Date: 2025-11-23
+-- Purpose: Add email verification and password reset functionality
+-- ============================================
+
+-- 1. Add email verification columns to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255) UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP;
+
+-- 2. Add password reset columns to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255) UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_requested_at TIMESTAMP;
+
+-- 3. Create indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_email_verification_token ON users(email_verification_token);
+CREATE INDEX IF NOT EXISTS idx_password_reset_token ON users(password_reset_token);
+CREATE INDEX IF NOT EXISTS idx_user_is_email_verified ON users(is_email_verified);
+
+-- 4. Verify the changes
+SELECT 
+    column_name, 
+    data_type, 
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'users'
+AND column_name IN ('is_email_verified', 'email_verification_token', 'email_verified_at', 'password_reset_token', 'password_reset_expires_at', 'password_reset_requested_at')
+ORDER BY ordinal_position;
+
+
+
+DO $$
+DECLARE
+    target_email VARCHAR := 'hieucao240402@gmail.com';
+    target_user_id UUID;
+BEGIN
+    -- 1. Get the User ID
+    SELECT user_id INTO target_user_id FROM users WHERE email = target_email;
+
+    -- Check if user exists
+    IF target_user_id IS NULL THEN
+        RAISE NOTICE 'User with email % not found.', target_email;
+        RETURN;
+    END IF;
+
+    RAISE NOTICE 'Deleting user % (ID: %)...', target_email, target_user_id;
+
+    -- =======================================================
+    -- LEVEL 1: Delete Deep Dependencies 
+    -- =======================================================
+    
+    -- Delete Payments (As payer or payee)
+    DELETE FROM payments WHERE payer_id = target_user_id OR payee_id = target_user_id;
+
+    -- Delete Certificates (As buyer)
+    DELETE FROM certificates WHERE buyer_id = target_user_id;
+
+    -- Delete Disputes (As raiser or resolver)
+    DELETE FROM disputes WHERE raised_by_id = target_user_id OR resolved_by_id = target_user_id;
+
+    -- Delete Notifications
+    DELETE FROM notifications WHERE user_id = target_user_id;
+    
+    -- (Removed 'DELETE FROM reports' because the table was dropped)
+
+    -- Delete Inspection Appointments (As Owner or CVA)
+    DELETE FROM inspection_appointments WHERE ev_owner_id = target_user_id OR cva_id = target_user_id;
+
+    -- =======================================================
+    -- LEVEL 2: Transactions & Listings
+    -- =======================================================
+
+    -- Delete Transactions (As Buyer or Seller)
+    DELETE FROM transactions WHERE buyer_id = target_user_id OR seller_id = target_user_id;
+
+    -- Update Listings referenced by Admin/CVA (Set approver to null to keep history)
+    UPDATE credit_listings SET approved_by_id = NULL WHERE approved_by_id = target_user_id;
+    UPDATE credit_listings SET rejected_by_id = NULL WHERE rejected_by_id = target_user_id;
+    
+    -- Delete listings for credits owned by this user
+    DELETE FROM credit_listings WHERE credit_id IN (SELECT credit_id FROM carbon_credits WHERE user_id = target_user_id);
+
+    -- =======================================================
+    -- LEVEL 3: Credits & Journeys
+    -- =======================================================
+
+    -- Nullify CVA signatures on credits before deleting owner's credits
+    UPDATE carbon_credits SET verified_by_id = NULL WHERE verified_by_id = target_user_id;
+    
+    -- Delete Credits owned by user
+    DELETE FROM carbon_credits WHERE user_id = target_user_id;
+
+    -- Nullify CVA signatures on journeys
+    UPDATE journey_data SET verified_by_id = NULL WHERE verified_by_id = target_user_id;
+
+    -- Delete Journey Data (This user's trips)
+    DELETE FROM journey_data WHERE user_id = target_user_id;
+
+    -- =======================================================
+    -- LEVEL 4: Vehicles & Wallet & Stations
+    -- =======================================================
+
+    -- Delete Vehicles
+    DELETE FROM vehicles WHERE user_id = target_user_id;
+
+    -- Delete Wallet
+    DELETE FROM wallets WHERE user_id = target_user_id;
+
+    -- If this user was a CVA assigned to a station, unassign them
+    UPDATE verification_stations SET assigned_cva_id = NULL WHERE assigned_cva_id = target_user_id;
+
+    -- =======================================================
+    -- LEVEL 5: The User
+    -- =======================================================
+    
+    DELETE FROM users WHERE user_id = target_user_id;
+
+    RAISE NOTICE 'User % successfully deleted along with all related data.', target_email;
+
+END $$;

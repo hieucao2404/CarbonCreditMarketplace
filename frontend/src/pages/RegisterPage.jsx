@@ -72,7 +72,7 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/users/register", {
+      const res = await fetch("http://localhost:8080/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -158,6 +158,14 @@ const RegisterPage = () => {
                 transition={{ delay: 1.0 }}
               >
                 Đăng ký thành công!
+              </motion.p>
+              <motion.p
+                className="text-gray-600 text-sm mt-2 text-center max-w-xs"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.2 }}
+              >
+                📧 Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập
               </motion.p>
             </motion.div>
           </motion.div>

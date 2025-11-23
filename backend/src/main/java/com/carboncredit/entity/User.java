@@ -58,6 +58,26 @@ public class User implements UserDetails {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+     // ✅ EMAIL VERIFICATION FIELDS (NEW)
+    @Column(name = "is_email_verified")
+    private Boolean isEmailVerified = false;
+
+    @Column(name = "email_verification_token", length = 255, unique = true)
+    private String emailVerificationToken;
+
+    @Column(name = "email_verified_at")
+    private LocalDateTime emailVerifiedAt;
+
+    // ✅ PASSWORD RESET FIELDS (NEW)
+    @Column(name = "password_reset_token", length = 255, unique = true)
+    private String passwordResetToken;
+
+    @Column(name = "password_reset_expires_at")
+    private LocalDateTime passwordResetExpiresAt;
+
+    @Column(name = "password_reset_requested_at")
+    private LocalDateTime passwordResetRequestedAt;
+
     // Relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Vehicle> vehicles;
@@ -107,5 +127,25 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+
+    /**
+     * ✅ Helper method: Check if password reset token is valid
+     */
+    public boolean isPasswordResetTokenValid() {
+        if (passwordResetToken == null || passwordResetExpiresAt == null) {
+            return false;
+        }
+        return LocalDateTime.now().isBefore(passwordResetExpiresAt);
+    }
+
+    /**
+     * ✅ Helper method: Clear password reset fields after use
+     */
+    public void clearPasswordResetToken() {
+        this.passwordResetToken = null;
+        this.passwordResetExpiresAt = null;
+        this.passwordResetRequestedAt = null;
     }
 }

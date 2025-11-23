@@ -74,6 +74,16 @@ public class UserController {
             //load user details
             User user = userService.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+            // ✅ CHECK EMAIL VERIFICATION
+            if (user.getIsEmailVerified() == null || !user.getIsEmailVerified()) {
+                log.warn("❌ Login blocked - Email not verified for user: {}", user.getUsername());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.<LoginResponse>builder()
+                        .success(false)
+                        .message("Email chưa được xác thực. Vui lòng kiểm tra email và xác thực tài khoản trước khi đăng nhập.")
+                        .build());
+            }
+
             //generate JWT token
             String jwtToken = jwtService.generateToken(user);
 
@@ -85,7 +95,7 @@ public class UserController {
                 .expiresIn(jwtService.getExpirationTime())
                 .build();
         
-        log.info("Login successful for user: {}", loginRequest.getUsername());
+        log.info("✅ Login successful for verified user: {}", loginRequest.getUsername());
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
         
         } catch (Exception e) {
