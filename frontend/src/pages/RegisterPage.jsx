@@ -9,6 +9,7 @@ const RegisterPage = () => {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "", // ← THÊM FIELD NÀY
     fullName: "",
     phone: "",
   });
@@ -30,13 +31,14 @@ const RegisterPage = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const { role, username, email, password, fullName, phone } = formData;
+    const { role, username, email, password, confirmPassword, fullName, phone } = formData;
 
     // Required fields
     if (!role) newErrors.role = "Vui lòng chọn vai trò";
     if (!username) newErrors.username = "Vui lòng nhập tên đăng nhập";
     if (!email) newErrors.email = "Vui lòng nhập email";
     if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
+    if (!confirmPassword) newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu"; // ← THÊM VALIDATION
     if (!fullName) newErrors.fullName = "Vui lòng nhập họ và tên";
     if (!phone) newErrors.phone = "Vui lòng nhập số điện thoại";
 
@@ -48,6 +50,11 @@ const RegisterPage = () => {
     // Password validation: minimum 8 characters
     if (password && password.length < 8) {
       newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
+    }
+
+    // ← THÊM VALIDATION XÁC NHẬN MẬT KHẨU
+    if (password && confirmPassword && password !== confirmPassword) {
+      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
     }
 
     // Email validation
@@ -72,10 +79,13 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
+      // ← KHÔNG GỬI confirmPassword lên backend
+      const { confirmPassword, ...dataToSend } = formData;
+      
       const res = await fetch("http://localhost:8080/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       const data = await res.json();
@@ -210,8 +220,6 @@ const RegisterPage = () => {
           <option value="">Chọn vai trò</option>
           <option value="EV_OWNER">Chủ sở hữu xe điện</option>
           <option value="BUYER">Người mua tín chỉ carbon</option>
-          {/* <option value="CVA">Người xác minh</option>
-          <option value="ADMIN">Quản trị viên</option> */}
         </select>
         {errors.role && (
           <p className="text-red-500 text-xs mb-3">{errors.role}</p>
@@ -294,6 +302,26 @@ const RegisterPage = () => {
         />
         {errors.password && (
           <p className="text-red-500 text-xs mb-3">{errors.password}</p>
+        )}
+
+        {/* ← THÊM FIELD XÁC NHẬN MẬT KHẨU */}
+        <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
+          Xác nhận mật khẩu
+        </label>
+        <input
+          type="password"
+          name="confirmPassword"
+          placeholder="Nhập lại mật khẩu"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          className={`w-full border rounded-lg p-3 mb-1 focus:outline-none focus:ring-2 ${
+            errors.confirmPassword
+              ? "border-red-400 focus:ring-red-400"
+              : "border-gray-200 focus:ring-green-400"
+          }`}
+        />
+        {errors.confirmPassword && (
+          <p className="text-red-500 text-xs mb-3">{errors.confirmPassword}</p>
         )}
 
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
