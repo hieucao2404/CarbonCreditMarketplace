@@ -9,7 +9,7 @@ const RegisterPage = () => {
     username: "",
     email: "",
     password: "",
-    confirmPassword: "", // ← THÊM FIELD NÀY
+    confirmPassword: "", 
     fullName: "",
     phone: "",
   });
@@ -38,7 +38,7 @@ const RegisterPage = () => {
     if (!username) newErrors.username = "Vui lòng nhập tên đăng nhập";
     if (!email) newErrors.email = "Vui lòng nhập email";
     if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
-    if (!confirmPassword) newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu"; // ← THÊM VALIDATION
+    if (!confirmPassword) newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu"; 
     if (!fullName) newErrors.fullName = "Vui lòng nhập họ và tên";
     if (!phone) newErrors.phone = "Vui lòng nhập số điện thoại";
 
@@ -52,7 +52,7 @@ const RegisterPage = () => {
       newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
     }
 
-    // ← THÊM VALIDATION XÁC NHẬN MẬT KHẨU
+    // ← ConfirmPassword VALIDATION 
     if (password && confirmPassword && password !== confirmPassword) {
       newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
     }
@@ -205,7 +205,7 @@ const RegisterPage = () => {
         </p>
 
         <label className="block mb-2 text-gray-700 text-sm font-medium">
-          Vai trò
+          Vai trò <span className="text-red-500">*</span>
         </label>
         <select
           name="role"
@@ -220,13 +220,15 @@ const RegisterPage = () => {
           <option value="">Chọn vai trò</option>
           <option value="EV_OWNER">Chủ sở hữu xe điện</option>
           <option value="BUYER">Người mua tín chỉ carbon</option>
+            {/* <option value="CVA">Người xác minh</option>
+          <option value="ADMIN">Quản trị viên</option> */}
         </select>
         {errors.role && (
           <p className="text-red-500 text-xs mb-3">{errors.role}</p>
         )}
 
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
-          Tên đăng nhập
+          Tên đăng nhập <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -248,7 +250,7 @@ const RegisterPage = () => {
         </p>
 
         <label className="block mb-2 text-gray-700 text-sm font-medium">
-          Họ và tên
+          Họ và tên <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -267,7 +269,7 @@ const RegisterPage = () => {
         )}
 
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
-          Email
+          Email <span className="text-red-500">*</span>
         </label>
         <input
           type="email"
@@ -286,7 +288,7 @@ const RegisterPage = () => {
         )}
 
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
-          Mật khẩu
+          Mật khẩu <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
@@ -306,7 +308,7 @@ const RegisterPage = () => {
 
         {/* ← THÊM FIELD XÁC NHẬN MẬT KHẨU */}
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
-          Xác nhận mật khẩu
+          Xác nhận mật khẩu <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
@@ -325,7 +327,7 @@ const RegisterPage = () => {
         )}
 
         <label className="block mb-2 text-gray-700 text-sm font-medium mt-2">
-          Số điện thoại
+          Số điện thoại <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
