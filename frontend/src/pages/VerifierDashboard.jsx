@@ -140,7 +140,7 @@ export default function VerifierDashboard() {
 
     } catch (err) {
       console.error("Error loading dashboard data:", err);
-      setError("Failed to load dashboard data");
+      setError("Tải dữ liệu bảng điều khiển thất bại");
     } finally {
       setLoading(false);
     }
@@ -205,7 +205,7 @@ export default function VerifierDashboard() {
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading dashboard...</p>
+              <p className="text-gray-600">Đang tải bảng điều khiển...</p>
             </div>
           </main>
         </div>
@@ -228,10 +228,10 @@ export default function VerifierDashboard() {
           <div className="mb-6 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">
-                Verification Overview
+                Tổng quan Xác thực
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                Track and manage journey & listing verification requests
+                Theo dõi và quản lý các yêu cầu xác thực hành trình & tin rao
               </p>
             </div>
             <button
@@ -239,7 +239,7 @@ export default function VerifierDashboard() {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
             >
               <RefreshCw className="w-4 h-4" />
-              <span className="text-sm">Refresh</span>
+              <span className="text-sm">Làm mới</span>
             </button>
           </div>
 
@@ -253,39 +253,39 @@ export default function VerifierDashboard() {
           {/* Summary cards */}
           <div className="grid grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Pending Verification</p>
+              <p className="text-gray-500 text-sm">Chờ xác thực</p>
               <h2 className="text-3xl font-bold text-gray-800 mt-2">
                 {totalPending}
               </h2>
               <p className="text-xs text-gray-400">
-                {stats.pendingJourneysCount} journeys, {stats.pendingListingsCount} listings
+                {stats.pendingJourneysCount} hành trình, {stats.pendingListingsCount} tin rao
               </p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Approved This Month</p>
+              <p className="text-gray-500 text-sm">Đã phê duyệt trong tháng</p>
               <h2 className="text-3xl font-bold text-gray-800 mt-2">
                 {stats.approvedThisMonth}
               </h2>
               <p className="text-xs text-gray-400">
-                +{stats.rejectedThisMonth} requests rejected
+                +{stats.rejectedThisMonth} yêu cầu bị từ chối
               </p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Total Verified</p>
+              <p className="text-gray-500 text-sm">Tổng đã xác thực</p>
               <h2 className="text-3xl font-bold text-gray-800 mt-2">
                 {stats.totalVerified.toLocaleString()}
               </h2>
-              <p className="text-xs text-gray-400">Total carbon credits</p>
+              <p className="text-xs text-gray-400">Tổng tín chỉ carbon</p>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Approval Rate</p>
+              <p className="text-gray-500 text-sm">Tỷ lệ phê duyệt</p>
               <h2 className="text-3xl font-bold text-gray-800 mt-2">
                 {stats.approvalRate.toFixed(0)}%
               </h2>
-              <p className="text-xs text-gray-400">This month</p>
+              <p className="text-xs text-gray-400">Trong tháng</p>
             </div>
           </div>
 
@@ -294,18 +294,18 @@ export default function VerifierDashboard() {
             {/* High Priority Requests */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                High Priority Requests
+                Yêu cầu ưu tiên cao
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Urgent journeys & listings requiring processing
+                Hành trình & tin rao khẩn cần xử lý
               </p>
 
               {highPriorityItems.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No high priority requests</p>
+                  <p className="text-gray-500 text-sm">Không có yêu cầu ưu tiên cao</p>
                   <p className="text-gray-400 text-xs mt-1">
-                    All requests are within normal processing time
+                    Tất cả yêu cầu đang trong thời gian xử lý bình thường
                   </p>
                 </div>
               ) : (
@@ -316,8 +316,8 @@ export default function VerifierDashboard() {
                       ? (item.creditsEarned || item.co2ReducedKg || 0)
                       : (item.creditAmount || 0);
                     const userName = isJourney
-                      ? (item.user?.username || item.user?.fullName || "Unknown User")
-                      : (item.seller?.username || item.seller?.fullName || "Unknown Seller");
+                      ? (item.user?.username || item.user?.fullName || "Người dùng không xác định")
+                      : (item.seller?.username || item.seller?.fullName || "Người bán không xác định");
 
                     return (
                       <div
@@ -334,14 +334,14 @@ export default function VerifierDashboard() {
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-gray-800">{userName}</p>
                               <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-                                {isJourney ? 'Journey' : 'Listing'}
+                                {isJourney ? 'Hành trình' : 'Tin rao'}
                               </span>
                             </div>
                             <p className="text-xs text-gray-500">
                               {creditAmount.toFixed(2)} tCO₂
                             </p>
                             <p className="text-xs text-gray-400">
-                              Submitted: {formatDate(item.createdAt)}
+                              Nộp: {formatDate(item.createdAt)}
                             </p>
                           </div>
                         </div>
@@ -349,7 +349,7 @@ export default function VerifierDashboard() {
                           onClick={() => handleViewItem(item)}
                           className="bg-black text-white text-sm px-4 py-1.5 rounded-lg hover:bg-gray-800 transition"
                         >
-                          View Details
+                          Xem chi tiết
                         </button>
                       </div>
                     );
@@ -361,18 +361,18 @@ export default function VerifierDashboard() {
             {/* Recent Activities */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Recent Activities
+                Hoạt động gần đây
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Latest verification history
+                Lịch sử xác thực mới nhất
               </p>
 
               {recentVerifications.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No recent activities</p>
+                  <p className="text-gray-500 text-sm">Không có hoạt động gần đây</p>
                   <p className="text-gray-400 text-xs mt-1">
-                    Your verification history will appear here
+                    Lịch sử xác thực của bạn sẽ xuất hiện ở đây
                   </p>
                 </div>
               ) : (
@@ -397,10 +397,10 @@ export default function VerifierDashboard() {
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-gray-800">
-                                {verification.user?.username || verification.seller?.username || "Unknown"}
+                                {verification.user?.username || verification.seller?.username || "Không xác định"}
                               </p>
                               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                {isJourney ? 'Journey' : 'Listing'}
+                                {isJourney ? 'Hành trình' : 'Tin rao'}
                               </span>
                             </div>
                             <p className="text-xs text-gray-500">
@@ -417,7 +417,7 @@ export default function VerifierDashboard() {
                             : "bg-red-600 text-white"
                             }`}
                         >
-                          {isApproved ? "Approved" : "Rejected"}
+                          {isApproved ? "Đã phê duyệt" : "Bị từ chối"}
                         </span>
                       </div>
                     );

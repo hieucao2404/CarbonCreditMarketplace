@@ -233,7 +233,7 @@ export default function VerifierHeader() {
                 className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-left"
               >
                 <User className="w-4 h-4 text-gray-600" />
-                <span className="text-sm text-gray-700">My Profile</span>
+                <span className="text-sm text-gray-700">Hồ sơ của tôi</span>
               </button>
 
               <button
@@ -241,7 +241,7 @@ export default function VerifierHeader() {
                 className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-left"
               >
                 <Settings className="w-4 h-4 text-gray-600" />
-                <span className="text-sm text-gray-700">Settings</span>
+                <span className="text-sm text-gray-700">Cài đặt</span>
               </button>
 
               <div className="border-t border-gray-200 mt-2 pt-2">
@@ -250,7 +250,7 @@ export default function VerifierHeader() {
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-left text-red-600"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="text-sm font-medium">Logout</span>
+                  <span className="text-sm font-medium">Thoát</span>
                 </button>
               </div>
             </div>
