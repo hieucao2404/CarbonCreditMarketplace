@@ -702,3 +702,11 @@ BEGIN
     RAISE NOTICE 'User % successfully deleted along with all related data.', target_email;
 
 END $$;
+
+
+UPDATE users 
+SET 
+    is_email_verified = TRUE,
+    email_verified_at = CURRENT_TIMESTAMP,
+    email_verification_token = NULL
+WHERE username IN ('evowner2', 'admin001', 'buyer001', 'cva001');

@@ -162,11 +162,13 @@ public class JourneyDataService {
                     requestingUser.getId().toString(), "journeyData", journeyId.toString(), "update");
         }
 
+        updatedData.setUser(existing.getUser());
+
         // chekc if journey can be updated (no carbon credit yet)
-        if (existing.getCarbonCredit() != null) {
-            throw new BusinessOperationException("journeyData", "update",
-                    "cannot update journey that already has carbon credits");
-        }
+        // if (existing.getCarbonCredit() != null) {
+        //     throw new BusinessOperationException("journeyData", "update",
+        //             "cannot update journey that already has carbon credits");
+        // }
 
         // validate updated data
         validateJourneyData(updatedData);
