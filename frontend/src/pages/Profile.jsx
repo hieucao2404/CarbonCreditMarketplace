@@ -64,7 +64,7 @@ export default function Profile() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-gray-700">
                 <User className="w-4 h-4 text-gray-500" />
-                <span className="font-medium w-32">Username:</span>
+                <span className="font-medium w-32">Họ và tên:</span>
                 <span>{profile?.username}</span>
               </div>
 
@@ -76,13 +76,13 @@ export default function Profile() {
 
               <div className="flex items-center gap-3 text-gray-700">
                 <Phone className="w-4 h-4 text-gray-500" />
-                <span className="font-medium w-32">Phone:</span>
+                <span className="font-medium w-32">Số điện thoại:</span>
                 <span>{profile?.phone || "—"}</span>
               </div>
 
               <div className="flex items-center gap-3 text-gray-700">
                 <Shield className="w-4 h-4 text-gray-500" />
-                <span className="font-medium w-32">Role:</span>
+                <span className="font-medium w-32">Vai trò:</span>
                 <span className="uppercase text-green-600 font-semibold">
                   {profile?.role}
                 </span>
@@ -90,7 +90,7 @@ export default function Profile() {
 
               <div className="flex items-center gap-3 text-gray-700">
                 <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="font-medium w-32">Created At:</span>
+                <span className="font-medium w-32">Ngày tạo:</span>
                 <span>
                   {new Date(profile?.createdAt).toLocaleDateString("en-GB")}
                 </span>

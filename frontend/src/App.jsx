@@ -4,6 +4,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import ThemeToggle from "./components/ThemeToggle";
 
+//Withdraw
+import Withdraw from "./pages/Withdraw";
+import BuyerWithdraw from "./pages/BuyerWithdraw";
+
 import Profile from "./pages/Profile";
 import BuyerProfile from "./pages/BuyerProfile";
 import DepositPage from "./pages/DepositPage";
@@ -59,6 +63,9 @@ function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      
+      <Route path="/withdraw" element={<ProtectedRoute><Withdraw /></ProtectedRoute>} />
+      <Route path="/buyer/withdraw" element={<ProtectedRoute><BuyerWithdraw /></ProtectedRoute>} />
 
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/buyer/profile" element={<ProtectedRoute><BuyerProfile /></ProtectedRoute>} />

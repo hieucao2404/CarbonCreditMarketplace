@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Bell,
   Trash2,
+  DollarSign,
 } from "lucide-react";
 import { useNotifications } from "../hooks/useNotifications";
 
@@ -22,7 +23,7 @@ export default function Header() {
 
   // Use the notifications hook
   const {
-    notifications,
+    notifications = [],
     loading,
     markAsRead,
     markAllAsRead,
@@ -61,12 +62,21 @@ export default function Header() {
     navigate("/login", { replace: true });
   };
 
+  // Use hook methods (do NOT try to set internal notifications state directly)
   const handleDeleteNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (typeof deleteNotification === "function") {
+      deleteNotification(id);
+    } else {
+      console.warn("deleteNotification not provided by hook");
+    }
   };
 
   const handleDeleteAll = () => {
-    setNotifications([]);
+    if (typeof deleteAllNotifications === "function") {
+      deleteAllNotifications();
+    } else {
+      console.warn("deleteAllNotifications not provided by hook");
+    }
   };
 
   return (
@@ -91,12 +101,10 @@ export default function Header() {
           >
             <Bell
               className={`w-6 h-6 text-gray-700 transition ${
-                notifications.some((n) => !n.read)
-                  ? "animate-pulse text-green-600"
-                  : ""
+                notifications?.some((n) => !n.read) ? "animate-pulse text-green-600" : ""
               }`}
             />
-            {notifications.some((n) => !n.read) && (
+            {notifications?.some((n) => !n.read) && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                 {notifications.filter((n) => !n.read).length}
               </span>
@@ -116,11 +124,10 @@ export default function Header() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() =>
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, read: true }))
-                      )
-                    }
+                    onClick={() => {
+                      if (typeof markAllAsRead === "function") markAllAsRead();
+                      else console.warn("markAllAsRead not provided by hook");
+                    }}
                     className="text-xs text-green-600 hover:text-green-700 hover:underline transition"
                   >
                     Đánh dấu đã đọc
@@ -136,7 +143,7 @@ export default function Header() {
 
               {/* Danh sách thông báo */}
               <div className="max-h-64 overflow-y-auto">
-                {notifications.length === 0 ? (
+                {!notifications || notifications.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
                     Không có thông báo mới
                   </p>
@@ -147,13 +154,10 @@ export default function Header() {
                       className={`relative group px-4 py-3 text-sm cursor-pointer transition-all duration-150 border-b border-gray-100 last:border-none ${
                         !n.read ? "bg-green-50" : "bg-white"
                       } hover:bg-green-50`}
-                      onClick={() =>
-                        setNotifications((prev) =>
-                          prev.map((item) =>
-                            item.id === n.id ? { ...item, read: true } : item
-                          )
-                        )
-                      }
+                      onClick={() => {
+                        if (typeof markAsRead === "function") markAsRead(n.id);
+                        else console.warn("markAsRead not provided by hook");
+                      }}
                     >
                       <div className="flex items-start gap-2">
                         {!n.read && (
@@ -185,7 +189,6 @@ export default function Header() {
               <div className="border-t border-gray-200 text-center">
                 <button
                   onClick={() => {
-                    // navigate("/notifications");
                     setShowNotifications(false);
                   }}
                   className="w-full text-sm text-green-700 py-2 hover:bg-green-50 transition"
@@ -231,15 +234,30 @@ export default function Header() {
                 className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-left"
               >
                 <User className="w-4 h-4 text-gray-600" />
-                <span className="text-sm text-gray-700">My Profile</span>
+                <span className="text-sm text-gray-700">Hồ sơ cá nhân</span>
               </button>
 
               <button
-                onClick={() => setShowDropdown(false)}
+                onClick={() => {
+                  navigate("/settings");
+                  setShowDropdown(false);
+                }}
                 className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-left"
               >
                 <Settings className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-700">Cài đặt</span>
+              </button>
+
+              {/* NEW: Withdraw button right under Settings */}
+              <button
+                onClick={() => {
+                  navigate("/withdraw");
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-left"
+              >
+                <DollarSign className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-700">Rút tiền</span>
               </button>
 
               <div className="border-t border-gray-200 mt-2 pt-2">
@@ -297,4 +315,3 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
-
