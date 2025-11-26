@@ -4,6 +4,52 @@ import AdminSidebar from "../components/AdminSidebar";
 import AdminHeader from "../components/AdminHeader";
 import axiosInstance from "../api/axiosInstance";
 
+const TransactionMoneyBreakdown = ({ transaction, formatCurrency, platformFeePercent = 5 }) => {
+  const totalPrice = Number(transaction.totalPrice || transaction.amount || 0);
+  const platformFee = totalPrice * (platformFeePercent / 100);
+  const sellerReceives = totalPrice - platformFee;
+
+  return (
+    <div className="space-y-3">
+      {/* Buyer Pays */}
+      <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-red-600" />
+          <div>
+            <p className="text-xs text-red-600 font-medium">Người mua phải trả</p>
+            <p className="text-xs text-red-500">{transaction.buyer?.username || "N/A"}</p>
+          </div>
+        </div>
+        <p className="text-lg font-bold text-red-600">{formatCurrency(totalPrice)}</p>
+      </div>
+
+      {/* Seller Receives */}
+      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-green-600" />
+          <div>
+            <p className="text-xs text-green-600 font-medium">Người bán nhận được</p>
+            <p className="text-xs text-green-500">{transaction.seller?.username || "N/A"}</p>
+          </div>
+        </div>
+        <p className="text-lg font-bold text-green-600">{formatCurrency(sellerReceives)}</p>
+      </div>
+
+      {/* Platform Fee */}
+      <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-blue-600" />
+          <div>
+            <p className="text-xs text-blue-600 font-medium">Phí nền tảng ({platformFeePercent}%)</p>
+            <p className="text-xs text-blue-500">Carbon Credit Marketplace</p>
+          </div>
+        </div>
+        <p className="text-lg font-bold text-blue-600">{formatCurrency(platformFee)}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminTransactionManagement() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,8 +60,25 @@ export default function AdminTransactionManagement() {
   const [totalPages, setTotalPages] = useState(0);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [platformFeePercent, setPlatformFeePercent] = useState(5); // ✅ NEW: State for dynamic fee
 
   useEffect(() => {
+    // ✅ NEW: Fetch platform fee from system settings on component mount
+    const fetchPlatformFee = async () => {
+      try {
+        const response = await axiosInstance.get("/system-settings/public/PLATFORM_FEE_PERCENT");
+        if (response.data?.data?.settingValue) {
+          const feeValue = parseFloat(response.data.data.settingValue);
+          setPlatformFeePercent(feeValue);
+          console.log("✅ Platform fee fetched:", feeValue + "%");
+        }
+      } catch (err) {
+        console.warn("⚠️ Could not fetch platform fee, using default 5%", err.message);
+        setPlatformFeePercent(5); // Fallback to 5%
+      }
+    };
+    
+    fetchPlatformFee();
     loadTransactions();
   }, [statusFilter, page]);
 
@@ -162,6 +225,8 @@ export default function AdminTransactionManagement() {
                 <h2 className="text-lg font-semibold text-gray-800">Quản lý giao dịch</h2>
                 <p className="text-gray-500 text-sm">
                   Theo dõi và xử lý tất cả giao dịch trên nền tảng ({filteredTransactions.length} giao dịch)
+                  {" · "}
+                  <span className="text-blue-600 font-medium">Phí: {platformFeePercent}%</span>
                 </p>
               </div>
               <button
@@ -234,8 +299,7 @@ export default function AdminTransactionManagement() {
                     const creditAmount = Number(tx.carbonCreditsAmount || tx.credit?.creditAmount || 0);
                     const totalPrice = Number(tx.totalPrice || tx.amount || 0);
                     const pricePerUnit = creditAmount > 0 ? totalPrice / creditAmount : 0;
-                    // Platform fee is typically 5% of transaction value
-                    const estimatedFee = totalPrice * 0.05;
+                    const estimatedFee = totalPrice * (platformFeePercent / 100); // ✅ Use dynamic fee
 
                     return (
                       <div
@@ -265,14 +329,19 @@ export default function AdminTransactionManagement() {
                           </p>
                         </div>
 
-                        {/* Middle: Price Info */}
-                        <div className="text-right mr-6">
-                          <p className="font-semibold text-gray-800 text-lg">
-                            {formatCurrency(totalPrice)}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            Phí ước tính: {formatCurrency(estimatedFee)}
-                          </p>
+                        {/* Middle: Price Breakdown Preview */}
+                        <div className="text-right mr-6 space-y-1">
+                          <div className="flex flex-col items-end">
+                            <p className="text-xs text-red-600 font-medium">
+                              Người mua: {formatCurrency(totalPrice)}
+                            </p>
+                            <p className="text-xs text-green-600 font-medium">
+                              Người bán: {formatCurrency(totalPrice - estimatedFee)}
+                            </p>
+                            <p className="text-xs text-blue-600 font-medium">
+                              Phí: {formatCurrency(estimatedFee)}
+                            </p>
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">
                             {formatDate(tx.createdAt)}
                           </p>
@@ -351,6 +420,20 @@ export default function AdminTransactionManagement() {
                 </span>
               </div>
 
+              {/* Money Breakdown - NEW PROMINENT SECTION */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  Chi tiết thanh toán
+                </h3>
+                {/* ✅ Pass dynamic platformFeePercent to the component */}
+                <TransactionMoneyBreakdown 
+                  transaction={selectedTransaction} 
+                  formatCurrency={formatCurrency}
+                  platformFeePercent={platformFeePercent}
+                />
+              </div>
+
               {/* Participants */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="border border-gray-200 rounded-lg p-4">
@@ -398,13 +481,6 @@ export default function AdminTransactionManagement() {
                   <span className="text-sm font-medium text-gray-700">Tổng giá trị</span>
                   <span className="text-lg font-semibold text-gray-800">
                     {formatCurrency(Number(selectedTransaction.totalPrice || selectedTransaction.amount || 0))}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-xs text-gray-500">Phí nền tảng (ước tính 5%)</span>
-                  <span className="text-xs text-gray-600">
-                    {formatCurrency(Number(selectedTransaction.totalPrice || selectedTransaction.amount || 0) * 0.05)}
                   </span>
                 </div>
               </div>

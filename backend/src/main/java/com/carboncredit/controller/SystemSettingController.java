@@ -352,10 +352,59 @@ public class SystemSettingController {
         }
     }
 
-    // ========================================
-    // 4. HEALTH CHECK ENDPOINTS
+       // ========================================
+    // 4. PUBLIC ENDPOINTS (No Authentication Required)
     // ========================================
 
+    /**
+     * Get a public system setting (no authentication required)
+     * Used for frontend to fetch public settings like platform fee percentage
+     * 
+     * HTTP: GET /api/system-settings/public/{key}
+     * 
+     * LOGIC:
+     * 1. No authentication required
+     * 2. Fetch setting by key
+     * 3. Return setting DTO
+     * 
+     * RESPONSE:
+     * 200 OK - The requested setting
+     * 404 NOT FOUND - Setting with key not found
+     * 
+     * @param key - Setting key (e.g., "PLATFORM_FEE_PERCENT")
+     * @return ApiResponse containing SystemSettingDTO
+     */
+    @GetMapping("/public/{key}")
+    public ResponseEntity<ApiResponse<SystemSettingDTO>> getPublicSetting(
+            @PathVariable String key) {
+        try {
+            log.info("🔍 GET /api/system-settings/public/{} - Fetching public setting", key);
+            
+            // Validate key
+            if (key == null || key.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Setting key cannot be empty"));
+            }
+            
+            SystemSettingDTO setting = systemSettingService.getSettingByKey(key);
+            
+            return ResponseEntity.ok(
+                ApiResponse.success("Public setting retrieved successfully", setting)
+            );
+        } catch (EntityNotFoundException e) {
+            log.warn("⚠️ Setting not found: {}", key);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Setting not found: " + key));
+        } catch (Exception e) {
+            log.error("❌ Error fetching public setting", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve setting: " + e.getMessage()));
+        }
+    }
+
+    // ========================================
+    // 5. HEALTH CHECK ENDPOINTS
+    // ========================================
     /**
      * Health check endpoint (public)
      * 
